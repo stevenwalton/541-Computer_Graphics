@@ -86,25 +86,18 @@ int main(int argc, char *argv[])
             buffer1[3*i+1] != buffer2[3*i+1] ||
             buffer1[3*i+2] != buffer2[3*i+2])
         {
+            numDifferent++;
 	    if (numDifferent < 20)
             {
-                numDifferent++;
                 cerr <<"Difference at column = " << i%dims1[0] << ", row = " << (i/dims1[0]) << endl;
                 cerr << "\tFile " << argv[1] << " has " << (int) buffer1[3*i+0] << ", " << (int) buffer1[3*i+1] << ", " << (int) buffer1[3*i+2] << endl;
                 cerr << "\tFile " << argv[2] << " has " << (int) buffer2[3*i+0] << ", " << (int) buffer2[3*i+1] << ", " << (int) buffer2[3*i+2] << endl;
-                buffer1[3*i+0] = 255;
-                buffer1[3*i+1] = 255;
-                buffer1[3*i+2] = 255;
             }
+            buffer1[3*i+0] = 255;
+            buffer1[3*i+1] = 255;
+            buffer1[3*i+2] = 255;
         }
-        else
-        {
-/*
-            buffer1[3*i+0] = 0;
-            buffer1[3*i+1] = 0;
-            buffer1[3*i+2] = 0;
- */
-        }
+        
    }
 
    cerr << "The number of different pixels is " << numDifferent << endl;
