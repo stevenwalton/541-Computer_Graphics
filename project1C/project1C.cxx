@@ -91,7 +91,7 @@ class Triangle
         double          getXIntercept();
         void            splitTriangles();
         void            drawLower(double lX[3], double lY[3]);
-        void            drawUpper(double lX[3], double lY[3]);
+        //void            drawUpper(double lX[3], double lY[3]);
 };
 
 void
@@ -137,7 +137,8 @@ Triangle::splitTriangles()
     double lY[3] = {Y[middleY_index], Y[middleY_index], minY};
     double uY[3] = {Y[middleY_index], Y[middleY_index], maxY};
     drawLower(lX, lY);
-    drawUpper(uX,uY);
+    drawLower(uX, uY);
+    //drawUpper(uX,uY);
 }
 
 void
@@ -181,6 +182,7 @@ Triangle::drawLower(double lX[3], double lY[3])
     }
 }
 
+/*
 void
 Triangle::drawUpper(double lX[3], double lY[3])
 {
@@ -221,6 +223,7 @@ Triangle::drawUpper(double lX[3], double lY[3])
         }
     }
 }
+*/
 
 
 std::vector<Triangle>
