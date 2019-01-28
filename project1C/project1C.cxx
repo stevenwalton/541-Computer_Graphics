@@ -16,8 +16,8 @@
 using std::cerr;
 using std::endl;
 // Screen size globals
-int Nx = 1786;
-int Ny = 1344;
+static int Nx = 1786;
+static int Ny = 1344;
 
 double ceil_441(double f)
 {
@@ -36,7 +36,6 @@ NewImage(int width, int height)
     vtkImageData *img = vtkImageData::New();
     img->SetDimensions(width, height, 1);
     img->AllocateScalars(VTK_UNSIGNED_CHAR, 3);
-
     return img;
 }
 
@@ -55,12 +54,14 @@ WriteImage(vtkImageData *img, const char *filename)
 class Screen 
 {
   public:
+      // Constructor
+      Screen(int w, int h) {width = w; height = h;}
+      // Values
       unsigned char   *buffer;
-      int width, height;
-
+      int             width, height;
+      // Functions
       void SetPixel(int c, int r, unsigned char *color);
 };
-
 
 void
 Screen::SetPixel(int c, int r, unsigned char *color)
@@ -73,6 +74,9 @@ Screen::SetPixel(int c, int r, unsigned char *color)
     buffer[index+2] = color[2];
 }
 
+// Make a global object
+Screen screen(Nx, Ny);
+
 class Triangle
 {
     public:
@@ -80,24 +84,19 @@ class Triangle
         double          X[3];
         double          Y[3];
         unsigned char   color[3];
-
-        Screen          screen;
         double          minX, maxX, minY, maxY;
         int             minY_index, maxY_index, middleY_index;
         // Functions
-        void            inheritScreen(Screen s){screen = s;}
-        void            raster(Screen s);
+        void            raster();
         void            getMinMax();
         double          getXIntercept();
-        void            splitTriangles();
-        void            drawLower(double lX[3], double lY[3]);
-        //void            drawUpper(double lX[3], double lY[3]);
+        void            splitTriangles(); 
+        void            drawTriangle(double lX[3], double lY[3]); 
 };
 
 void
-Triangle::raster(Screen s)
+Triangle::raster()
 {
-    inheritScreen(s);
     getMinMax();
     splitTriangles();
 }
@@ -132,17 +131,18 @@ Triangle::splitTriangles()
 {
     // Set X in correct order for easier math
     double xIntercept = getXIntercept();
+    // Lower Triangle
     double lX[3] = {X[middleY_index], xIntercept, X[minY_index]};
-    double uX[3] = {X[middleY_index], xIntercept, X[maxY_index]};
     double lY[3] = {Y[middleY_index], Y[middleY_index], minY};
+    drawTriangle(lX, lY);
+    // Upper triangle
+    double uX[3] = {X[middleY_index], xIntercept, X[maxY_index]};
     double uY[3] = {Y[middleY_index], Y[middleY_index], maxY};
-    drawLower(lX, lY);
-    drawLower(uX, uY);
-    //drawUpper(uX,uY);
+    drawTriangle(uX, uY);
 }
 
 void
-Triangle::drawLower(double lX[3], double lY[3])
+Triangle::drawTriangle(double lX[3], double lY[3])
 {
     double lminX = *std::min_element(lX, lX+3);
     double lmaxX = *std::max_element(lX, lX+3);
@@ -181,50 +181,6 @@ Triangle::drawLower(double lX[3], double lY[3])
         }
     }
 }
-
-/*
-void
-Triangle::drawUpper(double lX[3], double lY[3])
-{
-    double lminX = *std::min_element(lX, lX+3);
-    double lmaxX = *std::max_element(lX, lX+3);
-
-    double lminY = *std::min_element(lY, lY+3);
-    double lmaxY = *std::max_element(lY, lY+3);
-    // Adjust triangle
-    if(lX[0] > lX[1])
-    {
-        double x0,x1;
-        x0 = lX[1];
-        x1 = lX[0];
-        lX[0] = x0;
-        lX[1] = x1;
-    }
-    double m0,m1,b0,b1,y0,y1;
-    if(lX[0] != lX[2]) // right triangle
-    {
-        m0 = (lY[2] - lY[0]) / (lX[2] - lX[0]);
-        b0 = lY[0] - (m0*lX[0]);
-    }
-    if(lX[1] != lX[2]) // right triangle
-    {
-        m1 = (lY[2] - lY[1]) / (lX[2] - lX[1]);
-        b1 = lY[1] - (m1*lX[1]);
-    }
-    for(int row = ceil_441(lminY); row <= floor_441(lmaxY); ++row)
-    {
-        double leftX, rightX;
-        leftX = (row - b0)/m0;
-        rightX = (row - b1)/m1;
-        // Only loop over x pixels within triangle
-        for(int col = ceil_441(leftX); col <= floor_441(rightX); ++col)
-        {
-            screen.SetPixel(col,row,color);
-        }
-    }
-}
-*/
-
 
 std::vector<Triangle>
 GetTriangles(void)
@@ -282,16 +238,12 @@ int main()
 
    std::vector<Triangle> triangles = GetTriangles();
    
-   Screen screen;
+   // Screen is a global object
    screen.buffer = buffer;
-   screen.width = Nx;
-   screen.height = Ny;
 
    // YOUR CODE GOES HERE TO DEPOSIT THE COLORS FROM TRIANGLES 
    // INTO PIXELS USING THE SCANLINE ALGORITHM
    for (int i = 0; i < triangles.size(); ++i)
-   {
-       triangles[i].raster(screen);
-   }
+       triangles[i].raster();
    WriteImage(image, "allTriangles");
 }
