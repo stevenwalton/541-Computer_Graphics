@@ -76,9 +76,9 @@ Screen::SetPixel(int c, int r, double z, double color[3])
         cerr << "ERROR: z=" << z << " which is out of bounds" << endl;
         abort();
     }
-    //if(z < zbuffer[pixel])
-    //    return;
-    //zbuffer[pixel] = z;
+    if(z < zbuffer[pixel])
+        return;
+    zbuffer[pixel] = z;
     int index = pixel*3;
     for(int i = 0; i < 3; ++i)
         buffer[index+i] = ceil_441(color[i]*255);
@@ -103,8 +103,13 @@ class Triangle
         bool            isArbitrary();
         double          getIntercept(double x[3], double y[3]);
         void            splitTriangle();
-        void            drawTriangle(double lX[3], double lY[3]);
+        void            drawTriangle(double lX[3], double lY[3], double lZ[3]);
         void            orientTriangleAndDraw();
+        void            lerp(double x0, double x1, double x2, 
+                             double f0[3], double f1[3],
+                             double color[3]);
+        double          lerp(double x0, double x1, double x2, 
+                             double f0, double f1);
 };
 
 void
@@ -140,8 +145,6 @@ Triangle::isArbitrary()
     {
         if(Y[i] == Y[(i+1)%3])
             return false;
-        //if(X[i] == X[(i+1)%3])
-        //    return true;
     }
     return true;
 }
@@ -152,27 +155,22 @@ Triangle::orientTriangleAndDraw()
     // Check if going down
     double x[3];
     double y[3];
+    double z[3];
     for(int i = 0; i < 3; ++i)
     {
         if(Y[i] == Y[(i+1)%3])
         {
-            //if(Y[i] == maxY) // Going down triangle
-            //{
             x[0] = X[i];
             y[0] = Y[i];
+            z[0] = Z[i];
+
             x[1] = X[(i+1)%3];
             y[1] = Y[(i+1)%3];
+            z[1] = Z[(i+1)%3];
+
             x[2] = X[(i+2)%3];
             y[2] = Y[(i+2)%3];
-            //}
-            //else if(Y[i] == minY) // Going up triangle
-            //{
-            //}
-            //else
-            //{
-            //    cerr << "Something is seriously wrong" << endl;
-            //    abort();
-            //}
+            z[2] = Z[(i+2)%3];
         }
     }
     if(!(y[2] == ymin || y[2] == ymax))
@@ -180,7 +178,7 @@ Triangle::orientTriangleAndDraw()
         cerr << "y's aren't right" << endl;
         abort();
     }
-    drawTriangle(x,y);
+    drawTriangle(x,y,z);
 }
 
 double
@@ -200,12 +198,7 @@ Triangle::getIntercept(double x[3], double y[3])
             maxIndex = i;
     }
     if(x[maxIndex] == x[minIndex])
-    {
-        //cerr << "X's are the same" << endl;
-        //cerr << x[maxIndex] << endl;
-        //std::cin.ignore();
         return x[maxIndex];
-    }
     double m = (y[maxIndex] - y[minIndex])/(x[maxIndex] - x[minIndex]);
     double b = y[maxIndex] - (m*x[maxIndex]);
     return ((y[midIndex] - b)/m);
@@ -214,41 +207,63 @@ Triangle::getIntercept(double x[3], double y[3])
 void
 Triangle::splitTriangle()
 {
-    /*
-    cerr << "==================" << endl;
-    cerr << "Original Triangle\n"
-         << X[0] << " " << Y[0] << "\n"
-         << X[1] << " " << Y[1] << "\n"
-         << X[2] << " " << Y[2] 
-         << endl;
-    */
     double xintercept = getIntercept(X,Y);
     double lX[3] = {X[ymid_index], xintercept, X[ymin_index]};
     double lY[3] = {Y[ymid_index], Y[ymid_index], Y[ymin_index]};
+    double lZ[3] = {Z[ymid_index], Z[ymid_index], Z[ymin_index]};
     // Double check that is lower
     if(lY[2] > lY[1] || lY[2] > lY[0])
     {
         cerr << "Not a lower triangle" << endl;
         abort();
     }
-    //cerr << endl;
-    //cerr << "Lower Triangle" << endl;
-    drawTriangle(lX,lY);
+    drawTriangle(lX,lY,lZ);
     double uX[3] = {X[ymid_index], xintercept, X[ymax_index]};
     double uY[3] = {Y[ymid_index], Y[ymid_index], Y[ymax_index]};
+    double uZ[3] = {Z[ymid_index], Z[ymid_index], Z[ymax_index]};
     // Double check that is upper
     if(uY[2] < uY[1] || uY[2] < uY[0])
     {
         cerr << "Not a upper triangle" << endl;
         abort();
     }
-    //cerr << "Upper Triangle" << endl;
-    drawTriangle(uX,uY);
-    //cerr << "==================" << endl;
+    drawTriangle(uX,uY,uZ);
+}
+  
+// For colors
+void
+Triangle::lerp(double x0, double x1, double x2,             // coordinates
+               double f0[3], double f1[3],    // field values
+               double f2[3])
+{
+    double t = 0;
+    if (x1 != x0) t = (x2-x0)/(x1-x0);
+    for(int i = 0; i < 3; ++i)
+        f2[i] = f0[i] + t*(f1[i] - f0[i]);
+        //f2[i] = (1-t)*f0[i] + t*f1[i];
+}
+
+// For Z values
+double
+Triangle::lerp(double x0, double x1, double x2,             // coordinates
+               double f0, double f1)    // field values
+{
+    double t = 0;
+    double f2;
+    if (x1 != x0) t = (x2-x0)/(x1-x0);
+    for(int i = 0; i < 3; ++i)
+        f2 = (f0 + t*(f1 - f0));
+    if(f2 < -1)
+    {
+        cerr << "x0\tx1\tx2\tf0\t\tf1\t\tf2" << endl;
+        cerr << x0 << "\t" << x1 << "\t" << x2
+             << "\t" << f0 << "\t" << f1 << "\t" << f2 << endl;
+        abort();
+    }
 }
 
 void
-Triangle::drawTriangle(double x[3], double y[3])
+Triangle::drawTriangle(double x[3], double y[3], double z[3])
 {
     int lowerY = ceil_441(*std::min_element(y,y+3));
     int upperY = floor_441(*std::max_element(y,y+3));
@@ -270,18 +285,10 @@ Triangle::drawTriangle(double x[3], double y[3])
         x[0] = x[1];
         x[1] = x0;
     }
-    /*
-    cerr 
-         << x[0] << " " << y[0] << "\n"
-         << x[1] << " " << y[1] << "\n"
-         << x[2] << " " << y[2] 
-         << endl;
-    cerr.flush();
-    cerr << endl;
-    */
     double m0 = 0;
     double m1 = 0;
     double b0, b1;
+    // Get slopes for left and right if available
     if(x[0] != x[2]) // Not a right triangle with left vertical 
     {
         m0 = (y[2]-y[0])/(x[2]-x[0]);
@@ -292,9 +299,13 @@ Triangle::drawTriangle(double x[3], double y[3])
         m1 = (y[2]-y[1])/(x[2]-x[1]);
         b1 = y[2] - (m1*x[2]);
     }
+
+
+    // Row loop
     for(int row = lowerY; row <= upperY; ++row)
     {
         double leftX, rightX;
+        // Get leftX and rightX considering if right triangles or not
         if(m0 == 0)
             leftX = *std::min_element(x,x+3);
         else
@@ -303,12 +314,36 @@ Triangle::drawTriangle(double x[3], double y[3])
             rightX = *std::max_element(x,x+3);
         else
             rightX = (row - b1)/m1;
-        leftX  = ceil_441(leftX);
-        rightX = floor_441(rightX);
-        for(int col = leftX; col <= rightX; ++col)
+        //leftX  = ceil_441(leftX);
+        //rightX = floor_441(rightX);
+        // LERPing in the y's
+        double lz, rz;
+        double fl[3], fr[3];
+        lz = lerp(y[0], y[2], row, z[0], z[2]);
+        rz = lerp(y[1], y[2], row, z[1], z[2]);
+        lerp(y[0], y[2], row, colors[0], colors[2], fl); // left color
+        lerp(y[1], y[2], row, colors[1], colors[2], fr); // right color
+        // Col loop
+        for(int col = ceil_441(leftX); col <= floor_441(rightX); ++col)
         {
-            double color[3] = {1,1,1};
-            screen.SetPixel(col,row,-1,color);
+            double z = lerp(leftX, rightX, col, lz, rz);     // z 
+            double color[3] = {0,0,0};
+            lerp(leftX, rightX, col, fl, fr, color);    // color
+            if(z > 0)
+            {
+                cerr << "z > 0: " << z << endl;
+                cerr << "leftX\trightX\tcol\tlz\t\trz" << endl;
+                cerr << leftX << "\t" << rightX << "\t" << col << "\t" << lz << "\t" << rz << endl;
+                abort();
+            }
+            if(z>0)
+            {
+                z = -1;
+                color[0] = 1;
+                color[1] = 1;
+                color[2] = 1;
+            }
+            screen.SetPixel(col,row,z,color);
         }
     }
 }
@@ -403,11 +438,15 @@ int main()
    // Initialize everything as black
    for (int i = 0 ; i < npixels*3 ; i++)
        buffer[i] = 0;
+   double zbuffer[npixels];
+   for(int i = 0; i < npixels; ++i)
+       zbuffer[i] = -1;
 
    std::vector<Triangle> triangles = GetTriangles();
    
    // Screen is a global object
-   screen.buffer = buffer;
+   screen.buffer  = buffer;
+   screen.zbuffer = zbuffer;
 
    // YOUR CODE GOES HERE TO DEPOSIT THE COLORS FROM TRIANGLES 
    // INTO PIXELS USING THE SCANLINE ALGORITHM
