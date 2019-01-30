@@ -81,7 +81,11 @@ Screen::SetPixel(int c, int r, double z, double color[3])
     zbuffer[pixel] = z;
     int index = pixel*3;
     for(int i = 0; i < 3; ++i)
-        buffer[index+i] = ceil_441(color[i]*255);
+    buffer[index+i] = ceil_441(color[i]*255.);
+    //  cerr << "index: " << index << " " << "col=" << c << " row=" << r 
+    //       << " has color: " << color[0] << " " << color[1] << " " << color[2]
+    //       << " and z: " << z;
+    //  cerr << endl;
 }
 
 // Make a global object
@@ -212,9 +216,22 @@ Triangle::splitTriangle()
     double lY[3] = {Y[ymid_index], Y[ymid_index], Y[ymin_index]};
     double lZ[3] = {Z[ymid_index], Z[ymid_index], Z[ymin_index]};
     // Double check that is lower
-    if(lY[2] > lY[1] || lY[2] > lY[0])
+    if(lY[2] != ymin)
     {
         cerr << "Not a lower triangle" << endl;
+        cerr << "ymin: " << ymin << endl;
+        cerr << "lY[2]: " << lY[2] << endl;
+        cerr << (lY[2] == ymin) << endl;
+        cerr << (lY[2] != ymin) << endl;
+        cerr << "Original:" << endl;
+        cerr << X[0] << " " << Y[0] << "\n"
+             << X[1] << " " << Y[1] << "\n"
+             << X[2] << " " << Y[2] << endl;
+        cerr << endl;
+        cerr << "'lower' triangle" << endl;
+        cerr << lX[0] << " " << lY[0] << "\n"
+             << lX[1] << " " << lY[1] << "\n"
+             << lX[2] << " " << lY[2] << endl;
         abort();
     }
     drawTriangle(lX,lY,lZ);
@@ -222,7 +239,7 @@ Triangle::splitTriangle()
     double uY[3] = {Y[ymid_index], Y[ymid_index], Y[ymax_index]};
     double uZ[3] = {Z[ymid_index], Z[ymid_index], Z[ymax_index]};
     // Double check that is upper
-    if(uY[2] < uY[1] || uY[2] < uY[0])
+    if(uY[2] != ymax)
     {
         cerr << "Not a upper triangle" << endl;
         abort();
@@ -239,8 +256,8 @@ Triangle::lerp(double x0, double x1, double x2,             // coordinates
     double t = 0;
     if (x1 != x0) t = (x2-x0)/(x1-x0);
     for(int i = 0; i < 3; ++i)
-        f2[i] = f0[i] + t*(f1[i] - f0[i]);
-        //f2[i] = (1-t)*f0[i] + t*f1[i];
+        f2[i] = f0[i] + t*(f1[i]-f0[i]);
+        //f2[i] = ((1.-t)*f0[i]) + (t*f1[i]);
 }
 
 // For Z values
@@ -249,17 +266,8 @@ Triangle::lerp(double x0, double x1, double x2,             // coordinates
                double f0, double f1)    // field values
 {
     double t = 0;
-    double f2;
     if (x1 != x0) t = (x2-x0)/(x1-x0);
-    for(int i = 0; i < 3; ++i)
-        f2 = (f0 + t*(f1 - f0));
-    if(f2 < -1)
-    {
-        cerr << "x0\tx1\tx2\tf0\t\tf1\t\tf2" << endl;
-        cerr << x0 << "\t" << x1 << "\t" << x2
-             << "\t" << f0 << "\t" << f1 << "\t" << f2 << endl;
-        abort();
-    }
+    return ((1.-t)*f0 + (t*f1));
 }
 
 void
@@ -282,8 +290,11 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3])
     if(x[1] < x[0])
     {
         double x0 = x[0];
+        double z0 = z[0];
         x[0] = x[1];
         x[1] = x0;
+        z[0] = z[1];
+        z[1] = z0;
     }
     double m0 = 0;
     double m1 = 0;
@@ -301,6 +312,9 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3])
     }
 
 
+    //  cerr << "Z: " << Z[0] << " " << Z[1] << " " << Z[2] << endl;
+    //  cerr << "LERP variables" << endl;
+    //  cerr << "z: " << z[0] << " " << z[1] << " " << z[2] << endl;
     // Row loop
     for(int row = lowerY; row <= upperY; ++row)
     {
@@ -314,34 +328,47 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3])
             rightX = *std::max_element(x,x+3);
         else
             rightX = (row - b1)/m1;
-        //leftX  = ceil_441(leftX);
-        //rightX = floor_441(rightX);
         // LERPing in the y's
         double lz, rz;
         double fl[3], fr[3];
-        lz = lerp(y[0], y[2], row, z[0], z[2]);
-        rz = lerp(y[1], y[2], row, z[1], z[2]);
-        lerp(y[0], y[2], row, colors[0], colors[2], fl); // left color
-        lerp(y[1], y[2], row, colors[1], colors[2], fr); // right color
+        lz = lerp(y[2], y[0], row, z[2], z[0]);
+        rz = lerp(y[2], y[1], row, z[2], z[1]);
+        if(y[2] == ymin)
+        {
+            lerp(y[2], y[0], row, colors[0], colors[2], fl); // left color
+            lerp(y[2], y[1], row, colors[1], colors[2], fr); // right color
+        }
+        else
+        {
+            lerp(y[2], y[0], row, colors[2], colors[0], fl); // left color
+            lerp(y[2], y[1], row, colors[2], colors[1], fr); // right color
+        }
+        //  cerr << "y: " << y[0] << " " << y[1] << " " << y[2] << endl;
+        //  cerr << "lz: " << lz << " rz: " << rz << endl;
+        //  cerr << "fl: " << fl[0] << " " << fl[1] << " " << fl[2] << endl;
+        //  cerr << "fr: " << fr[0] << " " << fr[1] << " " << fr[2] << endl;
+        //  cerr << "leftX: " << leftX << " rightX: " << rightX << endl;
         // Col loop
         for(int col = ceil_441(leftX); col <= floor_441(rightX); ++col)
         {
-            double z = lerp(leftX, rightX, col, lz, rz);     // z 
             double color[3] = {0,0,0};
-            lerp(leftX, rightX, col, fl, fr, color);    // color
+            double z;// = lerp(leftX, rightX, col, lz, rz);     // z 
+            z = lerp(leftX, rightX, col, lz, rz);
+            if(y[2] == ymin)
+            {
+                lerp(leftX, rightX, col, fl, fr, color);    // color
+            }
+            else
+            {
+                //z = lerp(leftX, rightX, col, rz, lz);
+                lerp(leftX, rightX, col, fr, fl, color);    // color
+            }
             if(z > 0)
             {
                 cerr << "z > 0: " << z << endl;
                 cerr << "leftX\trightX\tcol\tlz\t\trz" << endl;
                 cerr << leftX << "\t" << rightX << "\t" << col << "\t" << lz << "\t" << rz << endl;
                 abort();
-            }
-            if(z>0)
-            {
-                z = -1;
-                color[0] = 1;
-                color[1] = 1;
-                color[2] = 1;
             }
             screen.SetPixel(col,row,z,color);
         }
@@ -451,9 +478,11 @@ int main()
    // YOUR CODE GOES HERE TO DEPOSIT THE COLORS FROM TRIANGLES 
    // INTO PIXELS USING THE SCANLINE ALGORITHM
    for (int i = 0; i < triangles.size(); ++i)
+   //for(int i = 0; i < 10; ++i)
    {
        //cerr << "Triangle: " << i << endl;
        triangles[i].raster();
+       //std::cin.ignore();
    }
    WriteImage(image, "allTriangles");
 }
