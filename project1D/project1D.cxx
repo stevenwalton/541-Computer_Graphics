@@ -58,20 +58,30 @@ class Screen
       Screen(int w, int h) {width = w; height = h;}
       // Values
       unsigned char   *buffer;
+      double          *zbuffer;
       int             width, height;
       // Functions
-      void SetPixel(int c, int r, double *color);
+      void SetPixel(int c, int r, double z, double color[3]);
 };
 
+
 void
-Screen::SetPixel(int c, int r, double *color)
+Screen::SetPixel(int c, int r, double z, double color[3])
 {
+    int pixel = ((r*width) + c);
     if (r < 0 || r >= height || c < 0 || c>= width)
         return;
-    int index = ((r*width) + c)*3;
-    buffer[index+0] = ceil_441(color[0]*255);
-    buffer[index+1] = ceil_441(color[1]*255);
-    buffer[index+2] = ceil_441(color[2]*255);
+    if(z < -1 || z > 0)
+    {
+        cerr << "ERROR: z=" << z << " which is out of bounds" << endl;
+        abort();
+    }
+    //if(z < zbuffer[pixel])
+    //    return;
+    //zbuffer[pixel] = z;
+    int index = pixel*3;
+    for(int i = 0; i < 3; ++i)
+        buffer[index+i] = ceil_441(color[i]*255);
 }
 
 // Make a global object
@@ -85,170 +95,220 @@ class Triangle
         double          Y[3];
         double          Z[3];
         double          colors[3][3];
-        double          minX, maxX, minY, maxY;
-        int             minY_index, maxY_index, middleY_index;
+        double          ymin, ymax;
+        int             ymin_index, ymax_index, ymid_index;
         // Functions
         void            raster();
         void            getMinMax();
-        double          getXIntercept();
         bool            isArbitrary();
-        void            splitTriangles(); 
-        void            drawTriangle(double lX[3], double lY[3]); 
+        double          getIntercept(double x[3], double y[3]);
+        void            splitTriangle();
+        void            drawTriangle(double lX[3], double lY[3]);
+        void            orientTriangleAndDraw();
 };
 
 void
 Triangle::raster()
 {
     getMinMax();
-    splitTriangles();
+    if(isArbitrary())
+        splitTriangle();
+    else
+        orientTriangleAndDraw();
 }
 
 void
 Triangle::getMinMax()
 {
-    minX = *std::min_element(X,X+3);
-    maxX = *std::max_element(X,X+3);
-    
-    minY = *std::min_element(Y,Y+3);
-    maxY = *std::max_element(Y,Y+3);
-    
+    ymin = *std::min_element(Y,Y+3);
+    ymax = *std::max_element(Y,Y+3);
     for(int i = 0; i < 3; ++i)
     {
-        if(Y[i] == minY) minY_index = i;
-        else if(Y[i] == maxY) maxY_index = i;
-        else middleY_index = i;
+        if(Y[i] != ymin && Y[i] != ymax)
+            ymid_index = i;
+        else if (Y[i] == ymin)
+            ymin_index = i;
+        else if (Y[i] == ymax)
+            ymax_index = i;
     }
-}
-
-double
-Triangle::getXIntercept()
-{
-    if(X[maxY_index] == X[minY_index])
-        return X[maxY_index];
-    double m = (Y[maxY_index] - Y[minY_index]) / (X[maxY_index] - X[minY_index]);
-    if(m == 0 || std::isinf(m) || std::isnan(m))
-    {
-        cerr << "m is " << m << endl;
-        cerr << "X0-X1: " << X[maxY_index] << " - " << X[minY_index] << " = " << X[maxY_index] - X[minY_index] << endl;
-        cerr << X[0] << " " << Y[0] << "\n"
-             << X[1] << " " << Y[1] << "\n"
-             << X[2] << " " << Y[2] << endl;
-        abort();
-    }
-    cerr << "m: " << m << endl;
-    double b = Y[maxY_index] - (m * X[maxY_index]);
-    cerr << "b: " << b << endl;
-    cerr << "Returning: " << (Y[middleY_index] - b)/m << endl;
-    return ( (Y[middleY_index] - b) / m);
 }
 
 bool
 Triangle::isArbitrary()
 {
-    if(X[0] == X[1] || X[1] == X[2] || X[2] == X[1])
+    for(int i = 0; i < 3; ++i)
     {
-        if(Y[0] == Y[1] || Y[1] == Y[2] || Y[2] == Y[0])
+        if(Y[i] == Y[(i+1)%3])
             return false;
+        //if(X[i] == X[(i+1)%3])
+        //    return true;
     }
     return true;
 }
 
 void
-Triangle::splitTriangles()
+Triangle::orientTriangleAndDraw()
 {
-    // Set X in correct order for easier math
-    double xIntercept = getXIntercept();
-    // Lower Triangle
-    double lX[3] = {X[middleY_index], xIntercept, X[minY_index]};
-    double lY[3] = {Y[middleY_index], Y[middleY_index], minY};
-    drawTriangle(lX, lY);
-    double uX[3] = {X[middleY_index], xIntercept, X[maxY_index]};
-    double uY[3] = {Y[middleY_index], Y[middleY_index], maxY};
-    drawTriangle(uX, uY);
+    // Check if going down
+    double x[3];
+    double y[3];
+    for(int i = 0; i < 3; ++i)
+    {
+        if(Y[i] == Y[(i+1)%3])
+        {
+            //if(Y[i] == maxY) // Going down triangle
+            //{
+            x[0] = X[i];
+            y[0] = Y[i];
+            x[1] = X[(i+1)%3];
+            y[1] = Y[(i+1)%3];
+            x[2] = X[(i+2)%3];
+            y[2] = Y[(i+2)%3];
+            //}
+            //else if(Y[i] == minY) // Going up triangle
+            //{
+            //}
+            //else
+            //{
+            //    cerr << "Something is seriously wrong" << endl;
+            //    abort();
+            //}
+        }
+    }
+    if(!(y[2] == ymin || y[2] == ymax))
+    {
+        cerr << "y's aren't right" << endl;
+        abort();
+    }
+    drawTriangle(x,y);
+}
+
+double
+Triangle::getIntercept(double x[3], double y[3])
+{
+    double lmin = *std::min_element(y,y+3);
+    double lmax = *std::max_element(y,y+3);
+    int minIndex,midIndex, maxIndex;
+    // Assumes there is a midpoint
+    for(int i = 0; i < 3; ++i)
+    {
+        if (y[i] != lmin && y[i] != lmax)
+            midIndex = i;
+        else if(y[i] == lmin)
+            minIndex = i;
+        else if(y[i] == lmax)
+            maxIndex = i;
+    }
+    if(x[maxIndex] == x[minIndex])
+    {
+        //cerr << "X's are the same" << endl;
+        //cerr << x[maxIndex] << endl;
+        //std::cin.ignore();
+        return x[maxIndex];
+    }
+    double m = (y[maxIndex] - y[minIndex])/(x[maxIndex] - x[minIndex]);
+    double b = y[maxIndex] - (m*x[maxIndex]);
+    return ((y[midIndex] - b)/m);
 }
 
 void
-Triangle::drawTriangle(double lX[3], double lY[3])
+Triangle::splitTriangle()
 {
-    double lminX = *std::min_element(lX, lX+3);
-    double lmaxX = *std::max_element(lX, lX+3);
-
-    double lminY = *std::min_element(lY, lY+3);
-    double lmaxY = *std::max_element(lY, lY+3);
-    if(std::isnan(lX[0]) || std::isinf(lX[0]) ||
-       std::isnan(lX[1]) || std::isinf(lX[1]) ||
-       std::isnan(lX[2]) || std::isinf(lX[2]) ||
-       std::isnan(lY[0]) || std::isinf(lY[0]) ||
-       std::isnan(lY[1]) || std::isinf(lY[1]) ||
-       std::isnan(lY[2]) || std::isinf(lY[2]))
+    /*
+    cerr << "==================" << endl;
+    cerr << "Original Triangle\n"
+         << X[0] << " " << Y[0] << "\n"
+         << X[1] << " " << Y[1] << "\n"
+         << X[2] << " " << Y[2] 
+         << endl;
+    */
+    double xintercept = getIntercept(X,Y);
+    double lX[3] = {X[ymid_index], xintercept, X[ymin_index]};
+    double lY[3] = {Y[ymid_index], Y[ymid_index], Y[ymin_index]};
+    // Double check that is lower
+    if(lY[2] > lY[1] || lY[2] > lY[0])
     {
-        cerr << "OUCH!" << endl;
+        cerr << "Not a lower triangle" << endl;
         abort();
     }
-    // Adjust triangle
-    if(lX[0] > lX[1])
+    //cerr << endl;
+    //cerr << "Lower Triangle" << endl;
+    drawTriangle(lX,lY);
+    double uX[3] = {X[ymid_index], xintercept, X[ymax_index]};
+    double uY[3] = {Y[ymid_index], Y[ymid_index], Y[ymax_index]};
+    // Double check that is upper
+    if(uY[2] < uY[1] || uY[2] < uY[0])
     {
-        double x0,x1;
-        x0 = lX[1];
-        x1 = lX[0];
-        lX[0] = x0;
-        lX[1] = x1;
+        cerr << "Not a upper triangle" << endl;
+        abort();
     }
-    double m0,m1,b0,b1,y0,y1;
-    m0 = 0;
-    m1 = 0;
-    if(lX[0] != lX[2]) // right triangle
+    //cerr << "Upper Triangle" << endl;
+    drawTriangle(uX,uY);
+    //cerr << "==================" << endl;
+}
+
+void
+Triangle::drawTriangle(double x[3], double y[3])
+{
+    int lowerY = ceil_441(*std::min_element(y,y+3));
+    int upperY = floor_441(*std::max_element(y,y+3));
+    // Check that orientation is correct
+    if(y[0] != y[1])
     {
-        m0 = (lY[2] - lY[0]) / (lX[2] - lX[0]);
-        b0 = lY[0] - (m0*lX[0]);
-        if(std::isnan(b0))
-        {
-            cerr << "ERROR!!!! b0 is nan" << endl;
-            cerr << "m0: " << m0 << endl;
-            cerr << "X: " << lX[0] << " " << lX[1] << " " << lX[2] << endl;
-            cerr << "lX[2]-lX[0]: " << lX[0] << "-" << lX[1] << "=" << lX[0] - lX[1] << endl;
-            abort();
-        }
+        cerr << "Triangle isn't lower or upper" << endl;
+        cerr 
+             << x[0] << " " << y[0] << "\n"
+             << x[1] << " " << y[1] << "\n"
+             << x[2] << " " << y[2] 
+             << endl;
+        abort();
     }
-    if(lX[1] != lX[2]) // right triangle
+    // Set x[0] on left side
+    if(x[1] < x[0])
     {
-        m1 = (lY[2] - lY[1]) / (lX[2] - lX[1]);
-        b1 = lY[1] - (m1*lX[1]);
-        if(std::isnan(b1))
-        {
-            cerr << "m1: " << m1 << endl;
-            cerr << "X: " << lX[0] << " " << lX[1] << " " << lX[2] << endl;
-            cerr << "lX[2]-lX[1]: " << lX[2] << "-" << lX[1] << "=" << lX[2] - lX[1] << endl;
-            cerr << "ERROR!!!! b1 is nan" << endl;
-            abort();
-        }
+        double x0 = x[0];
+        x[0] = x[1];
+        x[1] = x0;
     }
-    for(int row = ceil_441(lminY); row <= floor_441(lmaxY); ++row)
+    /*
+    cerr 
+         << x[0] << " " << y[0] << "\n"
+         << x[1] << " " << y[1] << "\n"
+         << x[2] << " " << y[2] 
+         << endl;
+    cerr.flush();
+    cerr << endl;
+    */
+    double m0 = 0;
+    double m1 = 0;
+    double b0, b1;
+    if(x[0] != x[2]) // Not a right triangle with left vertical 
+    {
+        m0 = (y[2]-y[0])/(x[2]-x[0]);
+        b0 = y[2] - (m0*x[2]);
+    }
+    if(x[1] != x[2]) // Not a right triangle with right vertical
+    {
+        m1 = (y[2]-y[1])/(x[2]-x[1]);
+        b1 = y[2] - (m1*x[2]);
+    }
+    for(int row = lowerY; row <= upperY; ++row)
     {
         double leftX, rightX;
-        if(std::isnan(m0) || std::isinf(m0) || std::isnan(m1) || std::isinf(m1)
-                || std::isnan(b0) || std::isinf(b0) || std::isnan(b1) || std::isinf(b1))
-        {
-            cerr << "We got it" << endl;
-            cerr << "m0: " << m0 << endl;
-            cerr << "m1: " << m1 << endl;
-            cerr << "b0: " << b0 << endl;
-            cerr << "b1: " << b1 << endl;
-            abort();
-        }
-        if(m0 == 0)// || std::isnan(m0))
-            leftX = lminX;
+        if(m0 == 0)
+            leftX = *std::min_element(x,x+3);
         else
             leftX = (row - b0)/m0;
-        if(m1 == 0)// || std::isnan(m1))
-            rightX = lmaxX;
+        if(m1 == 0)
+            rightX = *std::max_element(x,x+3);
         else
-            (row - b1)/m1;
-        // Only loop over x pixels within triangle
-        for(int col = ceil_441(leftX); col <= floor_441(rightX); ++col)
+            rightX = (row - b1)/m1;
+        leftX  = ceil_441(leftX);
+        rightX = floor_441(rightX);
+        for(int col = leftX; col <= rightX; ++col)
         {
             double color[3] = {1,1,1};
-            screen.SetPixel(col,row,color);
+            screen.SetPixel(col,row,-1,color);
         }
     }
 }
@@ -334,7 +394,6 @@ GetTriangles(void)
     return tris;
 }
 
-
 int main()
 {
    vtkImageData *image = NewImage(Nx, Ny);
@@ -354,8 +413,7 @@ int main()
    // INTO PIXELS USING THE SCANLINE ALGORITHM
    for (int i = 0; i < triangles.size(); ++i)
    {
-       cerr << "Triangle: " << i << endl;
-       cerr.flush();
+       //cerr << "Triangle: " << i << endl;
        triangles[i].raster();
    }
    WriteImage(image, "allTriangles");
