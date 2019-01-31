@@ -81,7 +81,7 @@ Screen::SetPixel(int c, int r, double z, double color[3])
     zbuffer[pixel] = z;
     int index = pixel*3;
     for(int i = 0; i < 3; ++i)
-    buffer[index+i] = ceil_441(color[i]*255.);
+        buffer[index+i] = ceil_441(color[i]*255.);
 }
 
 // Make a global object
