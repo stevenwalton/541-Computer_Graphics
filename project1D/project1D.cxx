@@ -82,10 +82,6 @@ Screen::SetPixel(int c, int r, double z, double color[3])
     int index = pixel*3;
     for(int i = 0; i < 3; ++i)
     buffer[index+i] = ceil_441(color[i]*255.);
-    //  cerr << "index: " << index << " " << "col=" << c << " row=" << r 
-    //       << " has color: " << color[0] << " " << color[1] << " " << color[2]
-    //       << " and z: " << z;
-    //  cerr << endl;
 }
 
 // Make a global object
@@ -242,10 +238,6 @@ Triangle::splitTriangle()
     lC[2][0] = colors[ymin_index][0];
     lC[2][1] = colors[ymin_index][1];
     lC[2][2] = colors[ymin_index][2];
-    //cerr << "Original triangle colors:" << endl;
-    //cerr << colors[0][0] << " " << colors[0][1] << " " << colors[0][2] << endl;
-    //cerr << colors[1][0] << " " << colors[1][1] << " " << colors[1][2] << endl;
-    //cerr << colors[2][0] << " " << colors[2][1] << " " << colors[2][2] << endl;
 
     // Double check that is lower
     if(lY[2] != ymin)
@@ -298,10 +290,8 @@ Triangle::lerp(double x0, double x1, double x2,             // coordinates
 {
     double t = 0;
     if (x1 != x0) t = (x2-x0)/(x1-x0);
-    //if (x1 != x0) t = (x2-x1)/(x1-x0);
     for(int i = 0; i < 3; ++i)
         f2[i] = f0[i] + t*(f1[i]-f0[i]);
-        //f2[i] = ((1.-t)*f0[i]) + (t*f1[i]);
 }
 
 // For Z values
@@ -312,7 +302,6 @@ Triangle::lerp(double x0, double x1, double x2,             // coordinates
     double t = 0;
     if (x1 != x0) t = (x2-x0)/(x1-x0);
     return (f0 + t*(f1-f0));
-    //return ((1.-t)*f0 + (t*f1));
 }
 
 void
@@ -359,11 +348,6 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
     double m0 = 0;
     double m1 = 0;
     double b0, b1;
-    // Print colors
-    //cerr << "Split triangle colors:" << endl;
-    //cerr << c[0][0] << " " << c[0][1] << " " << c[0][2] << endl;
-    //cerr << c[1][0] << " " << c[1][1] << " " << c[1][2] << endl;
-    //cerr << c[2][0] << " " << c[2][1] << " " << c[2][2] << endl;
     // Get slopes for left and right if available
     if(x[0] != x[2]) // Not a right triangle with left vertical 
     {
@@ -377,9 +361,6 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
     }
 
 
-    //  cerr << "Z: " << Z[0] << " " << Z[1] << " " << Z[2] << endl;
-    //  cerr << "LERP variables" << endl;
-    //  cerr << "z: " << z[0] << " " << z[1] << " " << z[2] << endl;
     // Row loop
     for(int row = lowerY; row <= upperY; ++row)
     {
@@ -398,29 +379,14 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
         double fl[3], fr[3];
         lz = lerp(y[2], y[0], row, z[2], z[0]);
         rz = lerp(y[2], y[1], row, z[2], z[1]);
-        //lerp(y[0], y[2], row, colors[0], colors[2], fl); // left color
-        //lerp(y[1], y[2], row, colors[1], colors[2], fr); // right color
         lerp(y[2], y[0], row, c[2], c[0], fl); // left color
         lerp(y[2], y[1], row, c[2], c[1], fr); // right color
-        //  cerr << "y: " << y[0] << " " << y[1] << " " << y[2] << endl;
-        //  cerr << "lz: " << lz << " rz: " << rz << endl;
-        //  cerr << "fl: " << fl[0] << " " << fl[1] << " " << fl[2] << endl;
-        //  cerr << "fr: " << fr[0] << " " << fr[1] << " " << fr[2] << endl;
-        //  cerr << "leftX: " << leftX << " rightX: " << rightX << endl;
         // Col loop
         for(int col = ceil_441(leftX); col <= floor_441(rightX); ++col)
         {
             double color[3] = {0,0,0};
-            double z;// = lerp(leftX, rightX, col, lz, rz);     // z 
-            z = lerp(leftX, rightX, col, lz, rz);
+            double z = lerp(leftX, rightX, col, lz, rz);
             lerp(leftX, rightX, col, fl, fr, color);    // color
-            if(z > 0)
-            {
-                cerr << "z > 0: " << z << endl;
-                cerr << "leftX\trightX\tcol\tlz\t\trz" << endl;
-                cerr << leftX << "\t" << rightX << "\t" << col << "\t" << lz << "\t" << rz << endl;
-                abort();
-            }
             screen.SetPixel(col,row,z,color);
         }
     }
@@ -529,11 +495,8 @@ int main()
    // YOUR CODE GOES HERE TO DEPOSIT THE COLORS FROM TRIANGLES 
    // INTO PIXELS USING THE SCANLINE ALGORITHM
    for (int i = 0; i < triangles.size(); ++i)
-   //for(int i = 0; i < 10; ++i)
    {
-       //cerr << "Triangle: " << i << endl;
        triangles[i].raster();
-       //std::cin.ignore();
    }
    WriteImage(image, "allTriangles");
 }
