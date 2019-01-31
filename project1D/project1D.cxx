@@ -107,7 +107,7 @@ class Triangle
         bool            isArbitrary();
         double          getIntercept(double x[3], double y[3]);
         void            splitTriangle();
-        void            drawTriangle(double lX[3], double lY[3], double lZ[3]);
+        void            drawTriangle(double lX[3], double lY[3], double lZ[3], double c[3][3]);
         void            orientTriangleAndDraw();
         void            lerp(double x0, double x1, double x2, 
                              double f0[3], double f1[3],
@@ -160,6 +160,7 @@ Triangle::orientTriangleAndDraw()
     double x[3];
     double y[3];
     double z[3];
+    double c[3][3];
     for(int i = 0; i < 3; ++i)
     {
         if(Y[i] == Y[(i+1)%3])
@@ -167,14 +168,23 @@ Triangle::orientTriangleAndDraw()
             x[0] = X[i];
             y[0] = Y[i];
             z[0] = Z[i];
+            c[0][0] = colors[i][0];
+            c[0][1] = colors[i][1];
+            c[0][2] = colors[i][2];
 
             x[1] = X[(i+1)%3];
             y[1] = Y[(i+1)%3];
             z[1] = Z[(i+1)%3];
+            c[1][0] = colors[(i+1)%3][0];
+            c[1][1] = colors[(i+1)%3][1];
+            c[1][2] = colors[(i+1)%3][2];
 
             x[2] = X[(i+2)%3];
             y[2] = Y[(i+2)%3];
             z[2] = Z[(i+2)%3];
+            c[2][0] = colors[(i+2)%3][0];
+            c[2][1] = colors[(i+2)%3][1];
+            c[2][2] = colors[(i+2)%3][2];
         }
     }
     if(!(y[2] == ymin || y[2] == ymax))
@@ -182,7 +192,7 @@ Triangle::orientTriangleAndDraw()
         cerr << "y's aren't right" << endl;
         abort();
     }
-    drawTriangle(x,y,z);
+    drawTriangle(x,y,z,c);
 }
 
 double
@@ -214,7 +224,29 @@ Triangle::splitTriangle()
     double xintercept = getIntercept(X,Y);
     double lX[3] = {X[ymid_index], xintercept, X[ymin_index]};
     double lY[3] = {Y[ymid_index], Y[ymid_index], Y[ymin_index]};
-    double lZ[3] = {Z[ymid_index], Z[ymid_index], Z[ymin_index]};
+
+    // Z intercept
+    double zintercept = lerp(Y[ymax_index], Y[ymin_index], Y[ymid_index], Z[ymax_index], Z[ymin_index]);
+    double lZ[3] = {Z[ymid_index], zintercept, Z[ymin_index]};
+
+    // Colors intercept
+    double cintercept[3] = {0,0,0};
+    lerp(Y[ymax_index], Y[ymin_index], Y[ymin_index], colors[ymax_index], colors[ymin_index], cintercept);
+    double lC[3][3];
+    lC[0][0] = colors[ymid_index][0];
+    lC[0][1] = colors[ymid_index][1];
+    lC[0][2] = colors[ymid_index][2];
+    lC[1][0] = cintercept[0];
+    lC[1][1] = cintercept[1];
+    lC[1][2] = cintercept[2];
+    lC[2][0] = colors[ymin_index][0];
+    lC[2][1] = colors[ymin_index][1];
+    lC[2][2] = colors[ymin_index][2];
+    //cerr << "Original triangle colors:" << endl;
+    //cerr << colors[0][0] << " " << colors[0][1] << " " << colors[0][2] << endl;
+    //cerr << colors[1][0] << " " << colors[1][1] << " " << colors[1][2] << endl;
+    //cerr << colors[2][0] << " " << colors[2][1] << " " << colors[2][2] << endl;
+
     // Double check that is lower
     if(lY[2] != ymin)
     {
@@ -234,17 +266,28 @@ Triangle::splitTriangle()
              << lX[2] << " " << lY[2] << endl;
         abort();
     }
-    drawTriangle(lX,lY,lZ);
+    drawTriangle(lX,lY,lZ,lC);
     double uX[3] = {X[ymid_index], xintercept, X[ymax_index]};
     double uY[3] = {Y[ymid_index], Y[ymid_index], Y[ymax_index]};
-    double uZ[3] = {Z[ymid_index], Z[ymid_index], Z[ymax_index]};
+    double uZ[3] = {Z[ymid_index], zintercept, Z[ymax_index]};
+
+    double uC[3][3];
+    uC[0][0] = colors[ymid_index][0];
+    uC[0][1] = colors[ymid_index][1];
+    uC[0][2] = colors[ymid_index][2];
+    uC[1][0] = cintercept[0];
+    uC[1][1] = cintercept[1];
+    uC[1][2] = cintercept[2];
+    uC[2][0] = colors[ymax_index][0];
+    uC[2][1] = colors[ymax_index][1];
+    uC[2][2] = colors[ymax_index][2];
     // Double check that is upper
     if(uY[2] != ymax)
     {
         cerr << "Not a upper triangle" << endl;
         abort();
     }
-    drawTriangle(uX,uY,uZ);
+    drawTriangle(uX,uY,uZ,uC);
 }
   
 // For colors
@@ -255,6 +298,7 @@ Triangle::lerp(double x0, double x1, double x2,             // coordinates
 {
     double t = 0;
     if (x1 != x0) t = (x2-x0)/(x1-x0);
+    //if (x1 != x0) t = (x2-x1)/(x1-x0);
     for(int i = 0; i < 3; ++i)
         f2[i] = f0[i] + t*(f1[i]-f0[i]);
         //f2[i] = ((1.-t)*f0[i]) + (t*f1[i]);
@@ -267,11 +311,12 @@ Triangle::lerp(double x0, double x1, double x2,             // coordinates
 {
     double t = 0;
     if (x1 != x0) t = (x2-x0)/(x1-x0);
-    return ((1.-t)*f0 + (t*f1));
+    return (f0 + t*(f1-f0));
+    //return ((1.-t)*f0 + (t*f1));
 }
 
 void
-Triangle::drawTriangle(double x[3], double y[3], double z[3])
+Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
 {
     int lowerY = ceil_441(*std::min_element(y,y+3));
     int upperY = floor_441(*std::max_element(y,y+3));
@@ -286,19 +331,39 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3])
              << endl;
         abort();
     }
+    // Check that upper or lower
+    if((y[2] - ymax)>1e6 || (y[2] - ymin)>1e6)
+    {
+        cerr << "y2 is not a max or min" << endl;
+        cerr << "y2: " << y[2] << endl;
+        cerr << ymin << " " << ymax << endl;
+        abort();
+    }
     // Set x[0] on left side
     if(x[1] < x[0])
     {
         double x0 = x[0];
         double z0 = z[0];
+        double c0[3] = {c[0][0], c[0][1], c[0][2]};
         x[0] = x[1];
         x[1] = x0;
         z[0] = z[1];
         z[1] = z0;
+        c[0][0] = c[1][0];
+        c[0][1] = c[1][1];
+        c[0][2] = c[1][2];
+        c[1][0] = c0[0];
+        c[1][1] = c0[1];
+        c[1][2] = c0[2];
     }
     double m0 = 0;
     double m1 = 0;
     double b0, b1;
+    // Print colors
+    //cerr << "Split triangle colors:" << endl;
+    //cerr << c[0][0] << " " << c[0][1] << " " << c[0][2] << endl;
+    //cerr << c[1][0] << " " << c[1][1] << " " << c[1][2] << endl;
+    //cerr << c[2][0] << " " << c[2][1] << " " << c[2][2] << endl;
     // Get slopes for left and right if available
     if(x[0] != x[2]) // Not a right triangle with left vertical 
     {
@@ -333,16 +398,10 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3])
         double fl[3], fr[3];
         lz = lerp(y[2], y[0], row, z[2], z[0]);
         rz = lerp(y[2], y[1], row, z[2], z[1]);
-        if(y[2] == ymin)
-        {
-            lerp(y[2], y[0], row, colors[0], colors[2], fl); // left color
-            lerp(y[2], y[1], row, colors[1], colors[2], fr); // right color
-        }
-        else
-        {
-            lerp(y[2], y[0], row, colors[2], colors[0], fl); // left color
-            lerp(y[2], y[1], row, colors[2], colors[1], fr); // right color
-        }
+        //lerp(y[0], y[2], row, colors[0], colors[2], fl); // left color
+        //lerp(y[1], y[2], row, colors[1], colors[2], fr); // right color
+        lerp(y[2], y[0], row, c[2], c[0], fl); // left color
+        lerp(y[2], y[1], row, c[2], c[1], fr); // right color
         //  cerr << "y: " << y[0] << " " << y[1] << " " << y[2] << endl;
         //  cerr << "lz: " << lz << " rz: " << rz << endl;
         //  cerr << "fl: " << fl[0] << " " << fl[1] << " " << fl[2] << endl;
@@ -354,15 +413,7 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3])
             double color[3] = {0,0,0};
             double z;// = lerp(leftX, rightX, col, lz, rz);     // z 
             z = lerp(leftX, rightX, col, lz, rz);
-            if(y[2] == ymin)
-            {
-                lerp(leftX, rightX, col, fl, fr, color);    // color
-            }
-            else
-            {
-                //z = lerp(leftX, rightX, col, rz, lz);
-                lerp(leftX, rightX, col, fr, fl, color);    // color
-            }
+            lerp(leftX, rightX, col, fl, fr, color);    // color
             if(z > 0)
             {
                 cerr << "z > 0: " << z << endl;
