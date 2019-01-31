@@ -231,7 +231,7 @@ Triangle::splitTriangle()
 
     // Colors intercept
     double cintercept[3] = {0,0,0};
-    lerp(Y[ymax_index], Y[ymin_index], Y[ymin_index], colors[ymax_index], colors[ymin_index], cintercept);
+    lerp(Y[ymax_index], Y[ymin_index], Y[ymid_index], colors[ymax_index], colors[ymin_index], cintercept);
     double lC[3][3];
     lC[0][0] = colors[ymid_index][0];
     lC[0][1] = colors[ymid_index][1];
