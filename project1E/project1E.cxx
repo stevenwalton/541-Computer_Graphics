@@ -156,7 +156,7 @@ class Camera
     double          focus[3];
     double          up[3];
 
-    Matrix          ViewTransform(void);
+    Matrix          ViewTransform(double alpha, double f, double n);
     Matrix          CameraTransform(void);
     Matrix          DeviceTransform(double x, double y, double z, double n, double m);
 };
@@ -206,13 +206,52 @@ GetCamera(int frame, int nframes)
 }
 
 Matrix
-Camera::ViewTransform()
+Camera::ViewTransform(double alpha, double f, double n)
 {
+    double cot = 1./(tan(alpha/2.));
+    double pos22 = (f+n)/(f-n);
+    double pos32 = (2*f*n)/(f-n); 
+    Matrix m;
+    for(int i = 0; i < 4; ++i)
+        for(int j = 0; j < 4; ++j)
+            m.A[i][j] = 0.;
+    m.A[0][0] = cot;
+    m.A[1][1] = cot;
+    m.A[2][2] = pos22;
+    m.A[3][3] = pos32;
+    m.A[2][3] = -1;
+    return m;
 }
 
 Matrix
 Camera::CameraTransform()
 {
+    Matrix m;
+    for(int i = 0; i < 4; ++i)
+        for(int j = 0; j < 4; ++j)
+            m.A[i][j] = 0.;
+
+    m.A[0][0] = (-v[2]*w[1]) + (v[1]*w[2]);
+    m.A[0][1] = (-u[2]*w[0]) + (u[0]*w[2]);
+    m.A[0][2] = (u[1]*v[2])-(v[1]*u[2]);
+
+    m.A[1][0] = (v[2]*w[0]) - (v[0]*w[2]);
+    m.A[1][1] = (-u[2]*w[0]) - (u[0]*w[2]);
+    m.A[1][2] = (v[0]*u[2]) - (u[0]*v[2]);
+    
+    m.A[2][0] = (-v[1]*w[0]) + (v[0]*w[1]);
+    m.A[2][1] = (u[1]*w[0]) - (u[0]*w[1]);
+    m.A[2][3] = (u[0]*v[1]) - (v[0]*u[1]);
+
+    m.A[3][0] = (c[1]*v[2] - v[1]*c[2])*w[0] + (v[0]*c[2] - c[0]*v[2])*w[1] 
+                + (c[0]*v[1] - v[0]*c[1])*w[2];
+    m.A[3][1] = (u[1]*c[2] - c[1]*u[2])*w[0] + (c[0]*u[2] - u[0]*c[2])*w[1]
+                + (u[0]*c[1] - c[0]*u[1])*w[2];
+    m.A[3][2] = (u[1]*v[2] - v[1]*u[2])*c[0] + (v[0]*u[3] - u[0]*v[2])*c[1] 
+                + (u[0]*v[1] - v[0]*u[1])*c[2];
+    m.A[3][3] = 1;
+
+    return m;
 }
 
 Matrix
