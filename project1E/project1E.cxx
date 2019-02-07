@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 using std::cerr;
 using std::endl;
@@ -61,7 +62,6 @@ class Matrix
     void            TransformPoint(const double *ptIn, double *ptOut);
     static Matrix   ComposeMatrices(const Matrix &, const Matrix &);
     void            Print(ostream &o);
-    Matrix          CrossProduct(double[3], double[3]);
 };
 
 void
@@ -112,16 +112,6 @@ Matrix::TransformPoint(const double *ptIn, double *ptOut)
              + ptIn[3]*A[3][3];
 }
 
-Matrix
-Matrix::CrossProduct(double a[3], double b[3])
-{
-    Matrix m;
-    for(int i = 0; i < 4; ++i)
-        for(int j = 0; j < 4; ++j)
-            m.A[i][j] = 0.;
-    //m.A[0][0] I= 
-
-}
 
 class Screen 
 {
@@ -140,12 +130,7 @@ class Screen
 void
 Screen::SetPixel(int c, int r, double z, double color[3])
 {
-    //cerr << "into color" << endl;
     int pixel = ((r*width) + c);
-    //cerr << "c: " << c ;
-    //cerr << " r: " << r;
-    //cerr << " z: " << z << endl;
-    //cin.ignore();
     if (r < 0 || r >= height || c < 0 || c>= width)
         return;
     /*
@@ -157,17 +142,10 @@ Screen::SetPixel(int c, int r, double z, double color[3])
     */
     if(z < zbuffer[pixel])
         return;
-
-    /*
-    cerr << "color: (" << ceil_441(color[0]*255.) << " ";
-                       cerr << ceil_441(color[1]*255.) << " ";
-                       cerr << ceil_441(color[2]*255.) << ")" << endl;
-                       */
     zbuffer[pixel] = z;
     int index = pixel*3;
     for(int i = 0; i < 3; ++i)
         buffer[index+i] = ceil_441(color[i]*255.);
-    //cerr << "Done color" << endl;
 }
 
 // Make a global object
@@ -233,7 +211,6 @@ GetCamera(int frame, int nframes)
 }
 
 Matrix
-//Camera::ViewTransform(double alpha, double f, double n)
 Camera::ViewTransform()
 {
     double cot = 1./(tan(angle/2.));
@@ -259,19 +236,17 @@ Camera::CameraTransform()
         for(int j = 0; j < 4; ++j)
             m.A[i][j] = 0.;
 
+    // Normalize all dem vectors!
+    // w
     double w[3];
     for(int i = 0; i < 3; ++i)
         w[i] = position[i] - focus[i];
     double wMag = sqrt(w[0]*w[0] + w[1]*w[1] + w[2]*w[2]);
+
     for(int i = 0; i < 3; ++i)
         w[i] = w[i]/wMag;
 
-    //double u[3] = {up[1]*w[2] - w[1]*up[2],
-    //               w[0]*up[2] - up[0]*w[2],
-    //               up[0]*w[1] - w[0]*up[1]};
-    //double u = crossProdVecs(up,w);
-    //cerr << "U" << endl;
-    //cerr << "Size u: " << u[0] << " " << u[1] << " " << u[2] <<  endl;
+    // u
     double u[3] = {(up[1]*w[2] - up[2]*w[1]),
                    (up[2]*w[0] - up[0]*w[2]),
                    (up[0]*w[1] - up[1]*w[0])};
@@ -279,6 +254,7 @@ Camera::CameraTransform()
     for(int i = 0; i < 3; ++i)
         u[i] = u[i]/uMag;
 
+    // v (not up!)
     double v[3] = {w[1]*u[2] - w[2]*u[1],
                    w[2]*u[0] - w[0]*u[2],
                    w[0]*u[1] - w[1]*u[0]};
@@ -287,19 +263,6 @@ Camera::CameraTransform()
         v[i] = v[i]/vMag;
 
 
-    // v = v
-    //m.A[0][0] = -v[2]*w[1] + v[1]*w[2]; // e11
-    //m.A[0][1] = -u[2] *w[1] - u[1] *w[2]; // e12
-    //m.A[0][2] =  u[0] *v[1]- v[0]*u[1]; // e13
-
-    //m.A[1][0] = v[2]*w[0] - v[0]*w[2];
-    //m.A[1][1] = -u[2]*w[0] + u[0]*w[2];
-    //m.A[1][2] = u[2]*v[0] - u[0]*v[2];
-
-    //m.A[2][0] = -v[1]*w[0] + v[0]*w[1];
-    //m.A[2][1] = u[1]*w[0] - u[0]*w[1];
-    //m.A[2][2] = u[0]*v[1] - u[1]*v[0];
-    //cerr << "v: " << v[0] << " " << v[1] << " " << v[2] << endl;
     m.A[0][0] = u[0];
     m.A[0][1] = v[0];
     m.A[0][2] = w[0];
@@ -342,24 +305,10 @@ Matrix
 Camera::VT_CT_DT()
 {
     Matrix vt = ViewTransform();
-    //cerr << "VT: " << endl;
-    //vt.Print(cerr);
-    //cin.ignore();
     Matrix ct = CameraTransform();
-    //cerr << "CT: " << endl;
-    //ct.Print(cerr);
-    //cin.ignore();
     Matrix dt = DeviceTransform();
-    //cerr << "DT: " << endl;
-    //dt.Print(cerr);
-    //cin.ignore();
     Matrix vtct = vt.ComposeMatrices(ct,vt);
-    //vtct.Print(cerr);
-    //cin.ignore();
     Matrix m = vtct.ComposeMatrices(vtct,dt);
-    //cerr << "M" << endl;
-    //m.Print(cerr);
-    //cin.ignore();
     return m;
 }
 
@@ -394,9 +343,6 @@ class Triangle
 void
 Triangle::raster()
 {
-    //cerr << "Rastering" << endl;
-    //Print(cerr);
-    //cin.ignore();
     getMinMax();
     if(isArbitrary())
         splitTriangle();
@@ -540,9 +486,7 @@ Triangle::splitTriangle()
              << lX[2] << " " << lY[2] << endl;
         abort();
     }
-    //cerr << "before Lower" << endl;
     drawTriangle(lX,lY,lZ,lC);
-    //cerr << "after Lower" << endl;
     double uX[3] = {X[ymid_index], xintercept, X[ymax_index]};
     double uY[3] = {Y[ymid_index], Y[ymid_index], Y[ymax_index]};
     double uZ[3] = {Z[ymid_index], zintercept, Z[ymax_index]};
@@ -563,9 +507,7 @@ Triangle::splitTriangle()
         cerr << "Not a upper triangle" << endl;
         abort();
     }
-    //cerr << "before Upper" << endl;
     drawTriangle(uX,uY,uZ,uC);
-    //cerr << "after Upper" << endl;
 }
   
 // For colors
@@ -576,14 +518,9 @@ Triangle::lerp(double x0, double x1, double x2,             // coordinates
 {
     double t = 0;
     if (x1 != x0) t = (x2-x0)/(x1-x0);
-    //for(int i = 0; i < 3; ++i)
-    //    f2[i] = f0[i] + t*(f1[i]-f0[i]);
     f2[0] = f0[0] + t*(f1[0]-f0[0]);
     f2[1] = f0[1] + t*(f1[1]-f0[1]);
     f2[2] = f0[2] + t*(f1[2]-f0[2]);
-    //cerr << "f0: " << f2[0] << endl;
-    //cerr << "f1: " << f2[1] << endl;
-    //cerr << "f2: " << f2[2] << endl;
 }
 
 // For Z values
@@ -621,12 +558,6 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
         cerr << ymin << " " << ymax << endl;
         abort();
     }
-    //cerr << "Draw Triangle:" << endl;
-    //cerr 
-    //     << c[0][0] << " " << c[0][1] << " " << c[0][2]<< "\n"
-    //     << c[1][1] << " " << c[1][1] << " " << c[1][2]<< "\n"
-    //     << c[2][2] << " " << c[2][1] << " " << c[2][2]
-    //     << endl;
     // Set x[0] on left side
     if(x[1] < x[0])
     {
@@ -680,31 +611,15 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
         rz = lerp(y[2], y[1], row, z[2], z[1]);
         lerp(y[2], y[0], row, c[2], c[0], fl); // left color
         lerp(y[2], y[1], row, c[2], c[1], fr); // right color
-        //cerr << "FL:" << endl;
-        //cerr 
-        //     << fl[0] << " " << fl[1] << " " << fl[2]
-        //     << endl;
-        //cerr << "FR:" << endl;
-        //cerr 
-        //     << fr[0] << " " << fr[1] << " " << fr[2]
-        //     << endl;
-        //cin.ignore();
         // Col loop
         for(int col = ceil_441(leftX); col <= floor_441(rightX); ++col)
         {
             double color[3] = {0,0,0};
             double z = lerp(leftX, rightX, col, lz, rz);
             lerp(leftX, rightX, col, fl, fr, color);    // color
-            //cerr << "Color:" << endl;
-            //cerr 
-            //     << color[0] << " " << color[1] << " " << color[2]
-            //     << endl;
-            //cin.ignore();
             screen.SetPixel(col,row,z,color);
         }
-        //cerr << "Done?" << endl;
     }
-    //cerr << "Done with triangle?" << endl;
 }
 
 Matrix
@@ -897,29 +812,10 @@ normalize(std::vector<Triangle> t)
     return nt;
 }
 
-std::vector<Triangle>
-image2DeviceSpace(std::vector<Triangle> t, int n, int m)
-{
-    std::vector<Triangle> newTriangles(t.size());
-    //for(int i = 0; i < triangles.size(); ++i)
-    for(int i = 0; i < 10; ++i)
-    {
-        /*
-        cerr << "Triangle: " << i << endl;
-        cerr << t[i].X[0] << " " << t[i].X[1] << " " << t[i].X[2] << endl;
-        cerr << t[i].Y[0] << " " << t[i].Y[1] << " " << t[i].Y[2] << endl;
-        cerr << t[i].Z[0] << " " << t[i].Z[1] << " " << t[i].Z[2] << endl;
-        */
-
-    }
-    return newTriangles;
-}
 
 void
 rotateAndRender(Matrix &m, Triangle t)
 {
-    //cerr << "old T" << endl;
-    //t.Print(cerr);
     for(int i = 0; i < 3; ++i)
     {
         double pIn[4] = {t.X[i], t.Y[i], t.Z[i], 1};
@@ -931,76 +827,31 @@ rotateAndRender(Matrix &m, Triangle t)
     }
 
 
-    //Matrix triMat = t.triangle2Matrix();
-    //cerr << "Tri as mat" << endl;
-    //triMat.Print(cerr);
-    //Matrix rotatedTriangle = m.ComposeMatrices(m,triMat);
-    //t.matrix2Triangle(rotatedTriangle);
-
-    //cerr << "new T" << endl;
-    //t.Print(cerr);
-
     t.raster();
 }
 
 
-int writeScreen(int c0, int c1)
+int writeScreen(int c0, int c1, char* s)
 {
    vtkImageData *image = initializeScreen();
    Camera camera = GetCamera(c0,c1);
-   /*
-   camera.near = 5;
-   camera.far = 200;
-   camera.angle=3.141592654/6;
-   camera.position[0] = 0;
-   camera.position[1] = 40;
-   camera.position[2] = 40;
-   camera.focus[0] = 0;
-   camera.focus[1] = 0;
-   camera.focus[2] = 0;
-   camera.up[0] = 0;
-   camera.up[1] = 1;
-   camera.up[2] = 0;
-   */
 
    std::vector<Triangle> triangles = GetTriangles();
-   //std::vector<Triangle> normalT = normalize(triangles);
-   //std::vector<Triangle> t = image2DeviceSpace(normalT);
    Matrix m = camera.VT_CT_DT();
-   //cerr << "M: " << endl;
-   //m.Print(cerr);
-   //cin.ignore();
-   //for(int i = 0; i < triangles.size(); ++i)
-   //for(int i = 0; i < 1; ++i)
-   for(int i = 1618; i < triangles.size(); ++i)
-   {
-       //cerr << "Triangle: " << i << endl;
-       //triangles[i].Print(cerr);
+   for(int i = 0; i < triangles.size(); ++i)
        rotateAndRender(m, triangles[i]);
-   }
-   
-   //for (int i = 0; i < triangles.size(); ++i)
-   //    triangles[i].raster();
-   WriteImage(image, "allTriangles");
+   WriteImage(image, s);
 }
 
 
 int main()
 {
-    writeScreen(0,1000);
-    //vtkImageData *image = initializeScreen();
-    //std::vector<Triangle> triangles = GetTriangles();
-    //for(int i = 0; i < triangles.size(); ++i)
-    //for(int i = 0; i < 10; ++i)
-    //{
-    //    cerr << "Triangle: " << i << endl;
-    //    triangles[i].Print(cerr);
-    //    //for(int j = 0; i < 3; ++j)
-    //    //{
-    //    //    triangles[i].X[j] *= screen.width;
-    //    //    triangles[i].Y[j] *= screen.height;
-    //    //}
-    //    //triangles[i].raster();
-    //}
+    for(int i = 0; i < 1000; i = i+250)
+    {
+        char fname[256];
+        sprintf(fname, "frame%.3i",i);
+        cerr << "Frame: " << fname << endl;
+        writeScreen(i,1000, fname);
+    }
     return 0;
 }
