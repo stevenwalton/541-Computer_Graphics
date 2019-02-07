@@ -140,7 +140,12 @@ class Screen
 void
 Screen::SetPixel(int c, int r, double z, double color[3])
 {
+    //cerr << "into color" << endl;
     int pixel = ((r*width) + c);
+    //cerr << "c: " << c ;
+    //cerr << " r: " << r;
+    //cerr << " z: " << z << endl;
+    //cin.ignore();
     if (r < 0 || r >= height || c < 0 || c>= width)
         return;
     /*
@@ -152,16 +157,17 @@ Screen::SetPixel(int c, int r, double z, double color[3])
     */
     if(z < zbuffer[pixel])
         return;
+
+    /*
+    cerr << "color: (" << ceil_441(color[0]*255.) << " ";
+                       cerr << ceil_441(color[1]*255.) << " ";
+                       cerr << ceil_441(color[2]*255.) << ")" << endl;
+                       */
     zbuffer[pixel] = z;
     int index = pixel*3;
     for(int i = 0; i < 3; ++i)
         buffer[index+i] = ceil_441(color[i]*255.);
-    /*
-    cerr << "c: " << c << " r: " << r << " z: " << z << endl;
-    cerr << "color: (" << ceil_441(color[0]*255.) << " "
-                       << ceil_441(color[1]*255.) << " "
-                       << ceil_441(color[1]*255.) << endl;
-                       */
+    //cerr << "Done color" << endl;
 }
 
 // Make a global object
@@ -347,10 +353,11 @@ Camera::VT_CT_DT()
     //cerr << "DT: " << endl;
     //dt.Print(cerr);
     //cin.ignore();
-    Matrix vtct = vt.ComposeMatrices(vt,ct);
+    Matrix vtct = vt.ComposeMatrices(ct,vt);
     //vtct.Print(cerr);
     //cin.ignore();
     Matrix m = vtct.ComposeMatrices(vtct,dt);
+    //cerr << "M" << endl;
     //m.Print(cerr);
     //cin.ignore();
     return m;
@@ -379,13 +386,17 @@ class Triangle
                              double color[3]);
         double          lerp(double x0, double x1, double x2, 
                              double f0, double f1);
-        Matrix          triangle2Matrix(double*, double*, double*);
+        Matrix          triangle2Matrix();
         void            Print(ostream &o);
+        void            matrix2Triangle(Matrix m);
 };
 
 void
 Triangle::raster()
 {
+    //cerr << "Rastering" << endl;
+    //Print(cerr);
+    //cin.ignore();
     getMinMax();
     if(isArbitrary())
         splitTriangle();
@@ -529,7 +540,9 @@ Triangle::splitTriangle()
              << lX[2] << " " << lY[2] << endl;
         abort();
     }
+    //cerr << "before Lower" << endl;
     drawTriangle(lX,lY,lZ,lC);
+    //cerr << "after Lower" << endl;
     double uX[3] = {X[ymid_index], xintercept, X[ymax_index]};
     double uY[3] = {Y[ymid_index], Y[ymid_index], Y[ymax_index]};
     double uZ[3] = {Z[ymid_index], zintercept, Z[ymax_index]};
@@ -550,14 +563,16 @@ Triangle::splitTriangle()
         cerr << "Not a upper triangle" << endl;
         abort();
     }
+    //cerr << "before Upper" << endl;
     drawTriangle(uX,uY,uZ,uC);
+    //cerr << "after Upper" << endl;
 }
   
 // For colors
 void
 Triangle::lerp(double x0, double x1, double x2,             // coordinates
-               double *f0, double *f1,    // field values
-               double *f2)
+               double f0[3], double f1[3],    // field values
+               double f2[3])
 {
     double t = 0;
     if (x1 != x0) t = (x2-x0)/(x1-x0);
@@ -566,6 +581,9 @@ Triangle::lerp(double x0, double x1, double x2,             // coordinates
     f2[0] = f0[0] + t*(f1[0]-f0[0]);
     f2[1] = f0[1] + t*(f1[1]-f0[1]);
     f2[2] = f0[2] + t*(f1[2]-f0[2]);
+    //cerr << "f0: " << f2[0] << endl;
+    //cerr << "f1: " << f2[1] << endl;
+    //cerr << "f2: " << f2[2] << endl;
 }
 
 // For Z values
@@ -575,7 +593,8 @@ Triangle::lerp(double x0, double x1, double x2,             // coordinates
 {
     double t = 0;
     if (x1 != x0) t = (x2-x0)/(x1-x0);
-    return (f0 + t*(f1-f0));
+    double f = (f0 + t*(f1-f0));
+    return f;
 }
 
 void
@@ -602,6 +621,12 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
         cerr << ymin << " " << ymax << endl;
         abort();
     }
+    //cerr << "Draw Triangle:" << endl;
+    //cerr 
+    //     << c[0][0] << " " << c[0][1] << " " << c[0][2]<< "\n"
+    //     << c[1][1] << " " << c[1][1] << " " << c[1][2]<< "\n"
+    //     << c[2][2] << " " << c[2][1] << " " << c[2][2]
+    //     << endl;
     // Set x[0] on left side
     if(x[1] < x[0])
     {
@@ -655,31 +680,58 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
         rz = lerp(y[2], y[1], row, z[2], z[1]);
         lerp(y[2], y[0], row, c[2], c[0], fl); // left color
         lerp(y[2], y[1], row, c[2], c[1], fr); // right color
+        //cerr << "FL:" << endl;
+        //cerr 
+        //     << fl[0] << " " << fl[1] << " " << fl[2]
+        //     << endl;
+        //cerr << "FR:" << endl;
+        //cerr 
+        //     << fr[0] << " " << fr[1] << " " << fr[2]
+        //     << endl;
+        //cin.ignore();
         // Col loop
         for(int col = ceil_441(leftX); col <= floor_441(rightX); ++col)
         {
             double color[3] = {0,0,0};
             double z = lerp(leftX, rightX, col, lz, rz);
             lerp(leftX, rightX, col, fl, fr, color);    // color
+            //cerr << "Color:" << endl;
+            //cerr 
+            //     << color[0] << " " << color[1] << " " << color[2]
+            //     << endl;
+            //cin.ignore();
             screen.SetPixel(col,row,z,color);
         }
+        //cerr << "Done?" << endl;
     }
+    //cerr << "Done with triangle?" << endl;
 }
 
 Matrix
-Triangle::triangle2Matrix(double *x, double *y, double *z)
+Triangle::triangle2Matrix()
 {
     Matrix m;
     for(int i = 0; i < 3; ++i)
     {
-        m.A[i][0] = x[i];
-        m.A[i][1] = y[i];
-        m.A[i][2] = z[i];
+        m.A[i][0] = X[i];
+        m.A[i][1] = Y[i];
+        m.A[i][2] = Z[i];
         m.A[i][3] = 1;
     }
     for(int i = 0; i < 4; ++i)
-        m.A[3][i] = 1;
+        m.A[3][i] = 0;
     return m;
+}
+
+void
+Triangle::matrix2Triangle(Matrix m)
+{
+    for(int i = 0; i < 3; ++i)
+    {
+        X[i] = m.A[0][i];
+        Y[i] = m.A[1][i];
+        Z[i] = m.A[2][i];
+    }
 }
 
 void
@@ -688,10 +740,16 @@ Triangle::Print(ostream &o)
     char strX[256];
     char strY[256];
     char strZ[256];
+    char strC0[256];
+    char strC1[256];
+    char strC2[256];
     sprintf(strX, "X: (%.7f, %.7f, %.7f)\n", X[0], X[1], X[2]);
     sprintf(strY, "Y: (%.7f, %.7f, %.7f)\n", Y[0], Y[1], Y[2]);
     sprintf(strZ, "Z: (%.7f, %.7f, %.7f)\n", Z[0], Z[1], Z[2]);
-    o << strX << strY << strZ;
+    sprintf(strC0, "colors0: (%.7f, %.7f, %.7f)\n", colors[0][0], colors[0][1], colors[0][2]);
+    sprintf(strC1, "colors1: (%.7f, %.7f, %.7f)\n", colors[1][0], colors[1][1], colors[1][2]);
+    sprintf(strC2, "colors2: (%.7f, %.7f, %.7f)\n", colors[2][0], colors[2][1], colors[2][2]);
+    o << strX << strY << strZ << strC0 << strC1 << strC2;
 }
 
 std::vector<Triangle>
@@ -858,33 +916,31 @@ image2DeviceSpace(std::vector<Triangle> t, int n, int m)
 }
 
 void
-rotateAndRender(Matrix &m, Triangle &t)
+rotateAndRender(Matrix &m, Triangle t)
 {
-    // Oppps place somewhere else
-    //Matrix m = c.VT_CT_DT();
-    //cerr << "M" << endl;
-    //m.Print(cerr);
-    Matrix triMat;
-    for(int j = 0; j < 4; ++j)
-    {
-        triMat.A[0][j] = t.X[j];
-        triMat.A[1][j] = t.Y[j];
-        triMat.A[2][j] = t.Z[j];
-        triMat.A[3][j] = 0;
-    }
-    Matrix rotatedTriangle = m.ComposeMatrices(triMat,m);
-
-    //cerr << "Rotated Triangle" << endl;
-    //rotate
-    Triangle newT;
+    //cerr << "old T" << endl;
+    //t.Print(cerr);
     for(int i = 0; i < 3; ++i)
     {
-        newT.X[i] = rotatedTriangle.A[0][i];
-        newT.Y[i] = rotatedTriangle.A[1][i];
-        newT.Z[i] = rotatedTriangle.A[2][i];
+        double pIn[4] = {t.X[i], t.Y[i], t.Z[i], 1};
+        double pOt[4] = {0,0,0,0};
+        m.TransformPoint(pIn, pOt);
+        t.X[i] = pOt[0]/pOt[3];
+        t.Y[i] = pOt[1]/pOt[3];
+        t.Z[i] = pOt[2]/pOt[3];
     }
-    newT.raster();
-    //newT.Print(cerr);
+
+
+    //Matrix triMat = t.triangle2Matrix();
+    //cerr << "Tri as mat" << endl;
+    //triMat.Print(cerr);
+    //Matrix rotatedTriangle = m.ComposeMatrices(m,triMat);
+    //t.matrix2Triangle(rotatedTriangle);
+
+    //cerr << "new T" << endl;
+    //t.Print(cerr);
+
+    t.raster();
 }
 
 
@@ -892,6 +948,20 @@ int writeScreen(int c0, int c1)
 {
    vtkImageData *image = initializeScreen();
    Camera camera = GetCamera(c0,c1);
+   /*
+   camera.near = 5;
+   camera.far = 200;
+   camera.angle=3.141592654/6;
+   camera.position[0] = 0;
+   camera.position[1] = 40;
+   camera.position[2] = 40;
+   camera.focus[0] = 0;
+   camera.focus[1] = 0;
+   camera.focus[2] = 0;
+   camera.up[0] = 0;
+   camera.up[1] = 1;
+   camera.up[2] = 0;
+   */
 
    std::vector<Triangle> triangles = GetTriangles();
    //std::vector<Triangle> normalT = normalize(triangles);
@@ -901,13 +971,19 @@ int writeScreen(int c0, int c1)
    //m.Print(cerr);
    //cin.ignore();
    //for(int i = 0; i < triangles.size(); ++i)
-   for(int i = 0; i < 10; ++i)
+   //for(int i = 0; i < 1; ++i)
+   for(int i = 1618; i < triangles.size(); ++i)
+   {
+       //cerr << "Triangle: " << i << endl;
+       //triangles[i].Print(cerr);
        rotateAndRender(m, triangles[i]);
+   }
    
    //for (int i = 0; i < triangles.size(); ++i)
    //    triangles[i].raster();
    WriteImage(image, "allTriangles");
 }
+
 
 int main()
 {
