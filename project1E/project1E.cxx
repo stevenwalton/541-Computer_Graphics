@@ -52,6 +52,7 @@ WriteImage(vtkImageData *img, const char *filename)
    writer->Delete();
 }
 
+
 class Matrix
 {
   public:
@@ -60,6 +61,7 @@ class Matrix
     void            TransformPoint(const double *ptIn, double *ptOut);
     static Matrix   ComposeMatrices(const Matrix &, const Matrix &);
     void            Print(ostream &o);
+    Matrix          CrossProduct(double[3], double[3]);
 };
 
 void
@@ -88,6 +90,7 @@ Matrix::ComposeMatrices(const Matrix &M1, const Matrix &M2)
     return rv;
 }
 
+
 void
 Matrix::TransformPoint(const double *ptIn, double *ptOut)
 {
@@ -107,6 +110,17 @@ Matrix::TransformPoint(const double *ptIn, double *ptOut)
              + ptIn[1]*A[1][3]
              + ptIn[2]*A[2][3]
              + ptIn[3]*A[3][3];
+}
+
+Matrix
+Matrix::CrossProduct(double a[3], double b[3])
+{
+    Matrix m;
+    for(int i = 0; i < 4; ++i)
+        for(int j = 0; j < 4; ++j)
+            m.A[i][j] = 0.;
+    //m.A[0][0] I= 
+
 }
 
 class Screen 
@@ -142,6 +156,12 @@ Screen::SetPixel(int c, int r, double z, double color[3])
     int index = pixel*3;
     for(int i = 0; i < 3; ++i)
         buffer[index+i] = ceil_441(color[i]*255.);
+    /*
+    cerr << "c: " << c << " r: " << r << " z: " << z << endl;
+    cerr << "color: (" << ceil_441(color[0]*255.) << " "
+                       << ceil_441(color[1]*255.) << " "
+                       << ceil_441(color[1]*255.) << endl;
+                       */
 }
 
 // Make a global object
@@ -156,9 +176,10 @@ class Camera
     double          focus[3];
     double          up[3];
 
-    Matrix          ViewTransform(double alpha, double f, double n);
+    Matrix          ViewTransform(void);
     Matrix          CameraTransform(void);
-    Matrix          DeviceTransform(double x, double y, double z, double n, double m);
+    Matrix          DeviceTransform(void);
+    Matrix          VT_CT_DT(void);
 };
 
 
@@ -206,11 +227,12 @@ GetCamera(int frame, int nframes)
 }
 
 Matrix
-Camera::ViewTransform(double alpha, double f, double n)
+//Camera::ViewTransform(double alpha, double f, double n)
+Camera::ViewTransform()
 {
-    double cot = 1./(tan(alpha/2.));
-    double pos22 = (f+n)/(f-n);
-    double pos32 = (2*f*n)/(f-n); 
+    double cot = 1./(tan(angle/2.));
+    double pos22 = (far+near)/(far-near);
+    double pos32 = (2*far*near)/(far-near); 
     Matrix m;
     for(int i = 0; i < 4; ++i)
         for(int j = 0; j < 4; ++j)
@@ -218,7 +240,7 @@ Camera::ViewTransform(double alpha, double f, double n)
     m.A[0][0] = cot;
     m.A[1][1] = cot;
     m.A[2][2] = pos22;
-    m.A[3][3] = pos32;
+    m.A[3][2] = pos32;
     m.A[2][3] = -1;
     return m;
 }
@@ -231,31 +253,69 @@ Camera::CameraTransform()
         for(int j = 0; j < 4; ++j)
             m.A[i][j] = 0.;
 
-    m.A[0][0] = (-v[2]*w[1]) + (v[1]*w[2]);
-    m.A[0][1] = (-u[2]*w[0]) + (u[0]*w[2]);
-    m.A[0][2] = (u[1]*v[2])-(v[1]*u[2]);
+    double w[3];
+    for(int i = 0; i < 3; ++i)
+        w[i] = position[i] - focus[i];
+    double wMag = sqrt(w[0]*w[0] + w[1]*w[1] + w[2]*w[2]);
+    for(int i = 0; i < 3; ++i)
+        w[i] = w[i]/wMag;
 
-    m.A[1][0] = (v[2]*w[0]) - (v[0]*w[2]);
-    m.A[1][1] = (-u[2]*w[0]) - (u[0]*w[2]);
-    m.A[1][2] = (v[0]*u[2]) - (u[0]*v[2]);
-    
-    m.A[2][0] = (-v[1]*w[0]) + (v[0]*w[1]);
-    m.A[2][1] = (u[1]*w[0]) - (u[0]*w[1]);
-    m.A[2][3] = (u[0]*v[1]) - (v[0]*u[1]);
+    //double u[3] = {up[1]*w[2] - w[1]*up[2],
+    //               w[0]*up[2] - up[0]*w[2],
+    //               up[0]*w[1] - w[0]*up[1]};
+    //double u = crossProdVecs(up,w);
+    //cerr << "U" << endl;
+    //cerr << "Size u: " << u[0] << " " << u[1] << " " << u[2] <<  endl;
+    double u[3] = {(up[1]*w[2] - up[2]*w[1]),
+                   (up[2]*w[0] - up[0]*w[2]),
+                   (up[0]*w[1] - up[1]*w[0])};
+    double uMag = sqrt(u[0]*u[0] + u[1]*u[1] + u[2]*u[2]);
+    for(int i = 0; i < 3; ++i)
+        u[i] = u[i]/uMag;
 
-    m.A[3][0] = (c[1]*v[2] - v[1]*c[2])*w[0] + (v[0]*c[2] - c[0]*v[2])*w[1] 
-                + (c[0]*v[1] - v[0]*c[1])*w[2];
-    m.A[3][1] = (u[1]*c[2] - c[1]*u[2])*w[0] + (c[0]*u[2] - u[0]*c[2])*w[1]
-                + (u[0]*c[1] - c[0]*u[1])*w[2];
-    m.A[3][2] = (u[1]*v[2] - v[1]*u[2])*c[0] + (v[0]*u[3] - u[0]*v[2])*c[1] 
-                + (u[0]*v[1] - v[0]*u[1])*c[2];
+    double v[3] = {w[1]*u[2] - w[2]*u[1],
+                   w[2]*u[0] - w[0]*u[2],
+                   w[0]*u[1] - w[1]*u[0]};
+    double vMag = sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    for(int i = 0; i < 3; ++i)
+        v[i] = v[i]/vMag;
+
+
+    // v = v
+    //m.A[0][0] = -v[2]*w[1] + v[1]*w[2]; // e11
+    //m.A[0][1] = -u[2] *w[1] - u[1] *w[2]; // e12
+    //m.A[0][2] =  u[0] *v[1]- v[0]*u[1]; // e13
+
+    //m.A[1][0] = v[2]*w[0] - v[0]*w[2];
+    //m.A[1][1] = -u[2]*w[0] + u[0]*w[2];
+    //m.A[1][2] = u[2]*v[0] - u[0]*v[2];
+
+    //m.A[2][0] = -v[1]*w[0] + v[0]*w[1];
+    //m.A[2][1] = u[1]*w[0] - u[0]*w[1];
+    //m.A[2][2] = u[0]*v[1] - u[1]*v[0];
+    //cerr << "v: " << v[0] << " " << v[1] << " " << v[2] << endl;
+    m.A[0][0] = u[0];
+    m.A[0][1] = v[0];
+    m.A[0][2] = w[0];
+
+    m.A[1][0] = u[1];
+    m.A[1][1] = v[1];
+    m.A[1][2] = w[1];
+
+    m.A[2][0] = u[2];
+    m.A[2][1] = v[2];
+    m.A[2][2] = w[2];
+
+    m.A[3][0] = -1*(u[0]*position[0] + u[1]*position[1] + u[2]*position[2]);
+    m.A[3][1] = -1*(v[0]*position[0] + v[1]*position[1] + v[2]*position[2]);
+    m.A[3][2] = -1*(w[0]*position[0] + w[1]*position[1] + w[2]*position[2]);
     m.A[3][3] = 1;
 
     return m;
 }
 
 Matrix
-Camera::DeviceTransform(double x, double y, double z, double n, double m)
+Camera::DeviceTransform()
 {
     Matrix dt;
     for(int i = 0; i < 4; ++i)
@@ -263,13 +323,37 @@ Camera::DeviceTransform(double x, double y, double z, double n, double m)
             dt.A[i][j] = 0;
 
     // coords * M
-    dt.A[0][0] = n/2*x;
-    dt.A[0][3] = n/2;
-    dt.A[1][1] = m/2*y;
-    dt.A[1][3] = m/2;
-    dt.A[2][2] = z;
+    dt.A[0][0] = screen.width/2;
+    dt.A[3][0] = screen.width/2;
+    dt.A[1][1] = screen.height/2;
+    dt.A[3][1] = screen.height/2;
+    dt.A[2][2] = 1; // Z isn't transformed
     dt.A[3][3] = 1;
     return dt;
+}
+
+Matrix
+Camera::VT_CT_DT()
+{
+    Matrix vt = ViewTransform();
+    //cerr << "VT: " << endl;
+    //vt.Print(cerr);
+    //cin.ignore();
+    Matrix ct = CameraTransform();
+    //cerr << "CT: " << endl;
+    //ct.Print(cerr);
+    //cin.ignore();
+    Matrix dt = DeviceTransform();
+    //cerr << "DT: " << endl;
+    //dt.Print(cerr);
+    //cin.ignore();
+    Matrix vtct = vt.ComposeMatrices(vt,ct);
+    //vtct.Print(cerr);
+    //cin.ignore();
+    Matrix m = vtct.ComposeMatrices(vtct,dt);
+    //m.Print(cerr);
+    //cin.ignore();
+    return m;
 }
 
 class Triangle
@@ -296,6 +380,7 @@ class Triangle
         double          lerp(double x0, double x1, double x2, 
                              double f0, double f1);
         Matrix          triangle2Matrix(double*, double*, double*);
+        void            Print(ostream &o);
 };
 
 void
@@ -471,13 +556,16 @@ Triangle::splitTriangle()
 // For colors
 void
 Triangle::lerp(double x0, double x1, double x2,             // coordinates
-               double f0[3], double f1[3],    // field values
-               double f2[3])
+               double *f0, double *f1,    // field values
+               double *f2)
 {
     double t = 0;
     if (x1 != x0) t = (x2-x0)/(x1-x0);
-    for(int i = 0; i < 3; ++i)
-        f2[i] = f0[i] + t*(f1[i]-f0[i]);
+    //for(int i = 0; i < 3; ++i)
+    //    f2[i] = f0[i] + t*(f1[i]-f0[i]);
+    f2[0] = f0[0] + t*(f1[0]-f0[0]);
+    f2[1] = f0[1] + t*(f1[1]-f0[1]);
+    f2[2] = f0[2] + t*(f1[2]-f0[2]);
 }
 
 // For Z values
@@ -592,6 +680,18 @@ Triangle::triangle2Matrix(double *x, double *y, double *z)
     for(int i = 0; i < 4; ++i)
         m.A[3][i] = 1;
     return m;
+}
+
+void
+Triangle::Print(ostream &o)
+{
+    char strX[256];
+    char strY[256];
+    char strZ[256];
+    sprintf(strX, "X: (%.7f, %.7f, %.7f)\n", X[0], X[1], X[2]);
+    sprintf(strY, "Y: (%.7f, %.7f, %.7f)\n", Y[0], Y[1], Y[2]);
+    sprintf(strZ, "Z: (%.7f, %.7f, %.7f)\n", Z[0], Z[1], Z[2]);
+    o << strX << strY << strZ;
 }
 
 std::vector<Triangle>
@@ -757,22 +857,74 @@ image2DeviceSpace(std::vector<Triangle> t, int n, int m)
     return newTriangles;
 }
 
+void
+rotateAndRender(Matrix &m, Triangle &t)
+{
+    // Oppps place somewhere else
+    //Matrix m = c.VT_CT_DT();
+    //cerr << "M" << endl;
+    //m.Print(cerr);
+    Matrix triMat;
+    for(int j = 0; j < 4; ++j)
+    {
+        triMat.A[0][j] = t.X[j];
+        triMat.A[1][j] = t.Y[j];
+        triMat.A[2][j] = t.Z[j];
+        triMat.A[3][j] = 0;
+    }
+    Matrix rotatedTriangle = m.ComposeMatrices(triMat,m);
 
-int writeScreen()
+    //cerr << "Rotated Triangle" << endl;
+    //rotate
+    Triangle newT;
+    for(int i = 0; i < 3; ++i)
+    {
+        newT.X[i] = rotatedTriangle.A[0][i];
+        newT.Y[i] = rotatedTriangle.A[1][i];
+        newT.Z[i] = rotatedTriangle.A[2][i];
+    }
+    newT.raster();
+    //newT.Print(cerr);
+}
+
+
+int writeScreen(int c0, int c1)
 {
    vtkImageData *image = initializeScreen();
+   Camera camera = GetCamera(c0,c1);
 
    std::vector<Triangle> triangles = GetTriangles();
-   std::vector<Triangle> normalT = normalize(triangles);
+   //std::vector<Triangle> normalT = normalize(triangles);
    //std::vector<Triangle> t = image2DeviceSpace(normalT);
+   Matrix m = camera.VT_CT_DT();
+   //cerr << "M: " << endl;
+   //m.Print(cerr);
+   //cin.ignore();
+   //for(int i = 0; i < triangles.size(); ++i)
+   for(int i = 0; i < 10; ++i)
+       rotateAndRender(m, triangles[i]);
    
    //for (int i = 0; i < triangles.size(); ++i)
    //    triangles[i].raster();
-   //WriteImage(image, "allTriangles");
+   WriteImage(image, "allTriangles");
 }
 
 int main()
 {
-    writeScreen();
+    writeScreen(0,1000);
+    //vtkImageData *image = initializeScreen();
+    //std::vector<Triangle> triangles = GetTriangles();
+    //for(int i = 0; i < triangles.size(); ++i)
+    //for(int i = 0; i < 10; ++i)
+    //{
+    //    cerr << "Triangle: " << i << endl;
+    //    triangles[i].Print(cerr);
+    //    //for(int j = 0; i < 3; ++j)
+    //    //{
+    //    //    triangles[i].X[j] *= screen.width;
+    //    //    triangles[i].Y[j] *= screen.height;
+    //    //}
+    //    //triangles[i].raster();
+    //}
     return 0;
 }
