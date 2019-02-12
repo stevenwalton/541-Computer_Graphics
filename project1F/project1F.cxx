@@ -47,7 +47,7 @@ WriteImage(vtkImageData *img, const char *filename)
 {
    std::string full_filename = filename;
    full_filename += ".png";
-   full_filename = "Images/" + full_filename;
+   //full_filename = "Images/" + full_filename;
    vtkPNGWriter *writer = vtkPNGWriter::New();
    writer->SetInputData(img);
    writer->SetFileName(full_filename.c_str());
@@ -363,8 +363,9 @@ class Triangle
         Matrix          triangle2Matrix();
         void            Print(ostream &o);
         void            matrix2Triangle(Matrix m);
+        void            applyShading();
         void            ambient(void);
-        void            diffuse(void);
+        double          diffuse(LightingParameters &, double *normals);
         void            specular(void);
         double          calculatePhongShading(LightingParameters &,
                                               double *viewDirection,
@@ -375,6 +376,7 @@ void
 Triangle::raster()
 {
     getMinMax();
+    applyShading();
     if(isArbitrary())
         splitTriangle();
     else
@@ -394,6 +396,31 @@ Triangle::getMinMax()
             ymin_index = i;
         else if (Y[i] == ymax)
             ymax_index = i;
+    }
+}
+
+void
+Triangle::applyShading()
+{
+    for(int i = 0; i < 3; ++i)
+    {
+        double diff = diffuse(lp, normals[i]);
+        //cerr << "diff: " << diff << endl;
+        for(int j = 0; j < 3; ++j)
+        {
+            colors[i][j] *= lp.Ka;
+            double a = lp.Kd*colors[i][j] * diff;
+            if(a > 1)
+            {
+                colors[i][j] = 1;
+                //cerr << "Over saturated" << endl;
+            }
+            else
+            {
+                colors[i][j] = a;
+                //cerr << "Not over saturated: " << a << endl;
+            }
+        }
     }
 }
 
@@ -621,7 +648,6 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
         b1 = y[2] - (m1*x[2]);
     }
 
-
     // Row loop
     for(int row = lowerY; row <= upperY; ++row)
     {
@@ -699,13 +725,56 @@ Triangle::Print(ostream &o)
 }
 
 double
+Triangle::diffuse(LightingParameters &lp, double *normal) // |<L,N>| 2-sided lighting
+{
+    /*
+    double d = 0;
+    for(int i = 0; i < 3; ++i)
+    {
+        cerr << "normal[" << i << "] = " << normal[i] << endl;
+        cerr << "lightDir[" << i << "] = " << lp.lightDir[i] << endl;
+        d += normal[i]*lp.lightDir[i];
+        cerr << "d: " << d << endl;
+        cin.ignore();
+    }
+    */
+    double dif = fabs(lp.lightDir[0]*normal[0] + lp.lightDir[1]*normal[1] + lp.lightDir[2]*normal[2]);
+    //cerr << "Returning: " << dif << endl;
+    //cerr << "abs(d): " << fabs(d) << endl;
+    return dif;
+}
+
+/*
+double
+Triangle::specular(LightingParameters &lp, double *normal)
+{
+    double r = 0; // surface reflectivity
+    double s = 0;
+    for(int i = 0; i < 3; ++i)
+    {
+        r = 2*(lp.lightDir[i]*normal[i])*normal[i] - 
+    }
+    double spec = lp.ks*pow(,);
+}
+*/
+
+/*
+double
 Triangle::calculatePhoneShading(LightingParameters &lp,
                                 double *v, // viewing direction
                                 double *n) // Normal
 {
-    double d;
-    return d;
+
+    double ldNorm = sqrt(lp.lightDir[0]*lp.lightDir[0] 
+            + lp.lightDir[1]*lp.lightDir[1] + lp.lightDir[2]*lp.lightDir[2]);
+    // Make sure light direction is normalized
+    for(int i = 0; i < 3; ++i)
+        lp.lightDir[i] /= ldNorm;
+
+    double phong = lp.Ka + 
+    return phong;
 }
+*/
 
 std::vector<Triangle>
 GetTriangles(void)
