@@ -347,7 +347,8 @@ class Triangle
         double          normals[3][3];
         double          ymin, ymax;
         int             ymin_index, ymax_index, ymid_index;
-        // Functions
+        Camera          c; // Functions
+        inline void     setCamera(Camera cam) { c = cam;};
         void            raster();
         void            getMinMax();
         bool            isArbitrary();
@@ -368,8 +369,8 @@ class Triangle
         double          diffuse(LightingParameters &, double *normals);
         void            specular(void);
         double          calculatePhongShading(LightingParameters &,
-                                              double *viewDirection,
-                                              double *normal);
+                                              Camera &c,
+                                              double *n);
 };
 
 void
@@ -404,22 +405,12 @@ Triangle::applyShading()
 {
     for(int i = 0; i < 3; ++i)
     {
-        double diff = diffuse(lp, normals[i]);
-        //cerr << "diff: " << diff << endl;
+        double phong = calculatePhongShading(lp, c, normals[i]);
         for(int j = 0; j < 3; ++j)
         {
-            colors[i][j] *= lp.Ka;
-            double a = lp.Kd*colors[i][j] * diff;
-            if(a > 1)
-            {
+            colors[i][j] *= phong;
+            if(colors[i][j] > 1)
                 colors[i][j] = 1;
-                //cerr << "Over saturated" << endl;
-            }
-            else
-            {
-                colors[i][j] = a;
-                //cerr << "Not over saturated: " << a << endl;
-            }
         }
     }
 }
@@ -758,23 +749,71 @@ Triangle::specular(LightingParameters &lp, double *normal)
 }
 */
 
-/*
 double
-Triangle::calculatePhoneShading(LightingParameters &lp,
-                                double *v, // viewing direction
+Triangle::calculatePhongShading(LightingParameters &lp,
+                                Camera &c, // viewing direction
                                 double *n) // Normal
 {
-
-    double ldNorm = sqrt(lp.lightDir[0]*lp.lightDir[0] 
-            + lp.lightDir[1]*lp.lightDir[1] + lp.lightDir[2]*lp.lightDir[2]);
-    // Make sure light direction is normalized
+    /*
+     *      Double check that everything 
+     *      that should be normalized is
+     */
+    // Normalize the normals
+    double normals_norm = 0;
+    // Calculate magnitude
     for(int i = 0; i < 3; ++i)
-        lp.lightDir[i] /= ldNorm;
+        normals_norm += (n[i]*n[i]);
+    normals_norm = sqrt(normals_norm);
+    // Divide each by magnitude
+    for(int i = 0; i < 3; ++i)
+        n[i] /= normals_norm;
+    // Normalize lp direction
+    double lpNorm = 0;
+    for(int i = 0; i < 3; ++i)
+        lpNorm += (lp.lightDir[i] * lp.lightDir[i]);
+    lpNorm = sqrt(lpNorm);
+    for(int i = 0; i < 3; ++i)
+        lp.lightDir[i] /= lpNorm;
 
-    double phong = lp.Ka + 
+    /*
+     *      Do our shading
+     */
+    // Get diffuse 
+    double dif = 0;
+    for(int i = 0; i < 3; ++i)
+        dif += lp.lightDir[i]*n[i];
+    dif = fabs(dif);
+
+    // Specular
+    double r[3] = {0,0,0};
+    double rNorm = 0;
+    for(int i = 0; i < 3; ++i)
+    {
+        r[i] = 2*(lp.lightDir[i]*n[i])*n[i] - lp.lightDir[i];
+        rNorm += (r[i]*r[i]);
+    }
+    rNorm = sqrt(rNorm);
+    for(int i = 0; i < 3; ++i)
+        r[i] /= rNorm;
+    double spec = 0;
+    for(int i = 0; i < 3; ++i)
+        spec += ;
+        //spec += c.position[i]*r[i];
+    (spec < 0) ? spec = -pow(fabs(spec),lp.alpha) : spec = 0;
+
+
+    /* 
+     *      Does it work?
+     *      [*] Ambient
+     *      [ ] Diffuse
+     *          - Many are off by one pixel on only one color
+     *      [ ] Specular
+     */
+    //double phong = lp.Kd*dif;
+    double phong = -lp.Ks*spec;
+    //double phong = lp.Ka + (lp.Kd*dif);
     return phong;
 }
-*/
 
 std::vector<Triangle>
 GetTriangles(void)
@@ -948,7 +987,10 @@ int writeScreen(int c0, int c1, char* s)
    std::vector<Triangle> triangles = GetTriangles();
    Matrix m = camera.VT_CT_DT();
    for(int i = 0; i < triangles.size(); ++i)
+   {
+       triangles[i].setCamera(camera);
        rotateAndRender(m, triangles[i]);
+   }
    WriteImage(image, s);
 }
 
