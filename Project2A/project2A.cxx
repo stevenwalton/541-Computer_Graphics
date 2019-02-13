@@ -48,7 +48,15 @@ class Triangle
       double         Z[3];
       double         fieldValue[3]; // always between 0 and 1
       double         normals[3][3];
+
+      void           setColor();
 };
+
+void
+Triangle::setColor()
+{
+
+}
 
 //
 // Function: GetTriangles
@@ -159,6 +167,7 @@ GetColorMap(void)
 }
 
 
+
 class vtk441Mapper : public vtkOpenGLPolyDataMapper
 {
   protected:
@@ -204,7 +213,67 @@ class vtk441Mapper : public vtkOpenGLPolyDataMapper
        glDisable(GL_LIGHT6);
        glDisable(GL_LIGHT7);
    }
+   inline virtual void     RenderPiece(vtkRenderer *ren, vtkActor *act) 
+                              {RenderBox(ren, act);};
+   // Let's just render the box once, right?
+   virtual void            RenderBox(vtkRenderer *ren, vtkActor *act);
+   virtual void            RenderBlob(vtkRenderer *ren, vtkActor *act);
 };
+
+void
+vtk441Mapper::RenderBox(vtkRenderer *ren, vtkActor *act)
+{
+      RemoveVTKOpenGLStateSideEffects();
+      SetupLight();
+      glEnable(GL_COLOR_MATERIAL);
+      glBegin(GL_LINE_STRIP);
+      // Bottom Square
+      glVertex3f(-10,-10,-10);
+      glVertex3f( 10,-10,-10);
+      glVertex3f( 10, 10,-10);
+      glVertex3f(-10, 10,-10);
+      glVertex3f(-10,-10,-10);
+      // Top square
+      glVertex3f(-10,-10, 10);
+      glVertex3f( 10,-10, 10);
+      glVertex3f( 10, 10, 10);
+      glVertex3f(-10, 10, 10);
+      glVertex3f(-10,-10, 10);
+      // Filling in
+      glVertex3f( 10,-10, 10);
+      glVertex3f( 10,-10,-10);
+      glVertex3f( 10, 10,-10);
+      glVertex3f( 10, 10, 10);
+      glVertex3f(-10, 10, 10);
+      glVertex3f(-10, 10,-10);
+      // End
+      glEnd();
+}
+
+void
+vtk441Mapper::RenderBlob(vtkRenderer *ren, vtkActor *act)
+{
+      std::vector<Triangle> tris = GetTriangles();
+      unsigned char *colors = GetColorMap();
+      RemoveVTKOpenGLStateSideEffects();
+      SetupLight();
+      glEnable(GL_COLOR_MATERIAL);
+      glBegin(GL_TRIANGLES);
+      float ambient[3] = {1,1,1};
+      glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ambient);
+      for(int i = 0; i < tris.size(); ++i)
+      {
+          int c0 = (int)colors[(int)(3*(tris[i].fieldValue[0]*255)+0)];
+          int c1 = (int)colors[(int)(3*(tris[i].fieldValue[1]*255)+1)];
+          int c2 = (int)colors[(int)(3*(tris[i].fieldValue[2]*255)+2)];
+          glColor3ub(c0,c1,c2);
+          for(int j = 0; j < 3; ++j)
+              glVertex3f(tris[i].X[j], 
+                         tris[i].Y[j], 
+                         tris[i].Z[j]);
+      }
+      glEnd();
+}
 
 class vtk441MapperPart1 : public vtk441Mapper
 {
@@ -213,15 +282,11 @@ class vtk441MapperPart1 : public vtk441Mapper
    
    virtual void RenderPiece(vtkRenderer *ren, vtkActor *act)
    {
-      RemoveVTKOpenGLStateSideEffects();
-      SetupLight();
-      glBegin(GL_TRIANGLES);
-      glVertex3f(-10, -10, -10);
-      glVertex3f(10, -10, 10);
-      glVertex3f(10, 10, 10);
-      glEnd();
+      RenderBox(ren, act);
+      RenderBlob(ren, act);
    }
 };
+
 
 vtkStandardNewMacro(vtk441MapperPart1);
 
@@ -239,18 +304,12 @@ class vtk441MapperPart2 : public vtk441Mapper
    }
    virtual void RenderPiece(vtkRenderer *ren, vtkActor *act)
    {
-       RemoveVTKOpenGLStateSideEffects();
-       SetupLight();
-       glBegin(GL_TRIANGLES);
-       glVertex3f(-10, -10, -10);
-       glVertex3f(10, -10, 10);
-       glVertex3f(10, 10, 10);
-       glEnd();
+       RenderBox(ren,act);
+       RenderBlob(ren,act);
    }
 };
 
 vtkStandardNewMacro(vtk441MapperPart2);
-
 
 int main()
 {
