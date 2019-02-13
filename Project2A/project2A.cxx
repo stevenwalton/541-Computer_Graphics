@@ -85,7 +85,7 @@ GetTriangles(void)
     double *color_ptr = var->GetPointer(0);
     vtkFloatArray *n = (vtkFloatArray *) pd->GetPointData()->GetNormals();
     float *normals = n->GetPointer(0);
-    std::vector<Triangle> tris(numTris);
+    std::vector<Triangle> global_tris(numTris);
     vtkIdType npts;
     vtkIdType *ptIds;
     int idx;
@@ -98,33 +98,35 @@ GetTriangles(void)
         }
         double *pt = NULL;
         pt = pts->GetPoint(ptIds[0]);
-        tris[idx].X[0] = pt[0];
-        tris[idx].Y[0] = pt[1];
-        tris[idx].Z[0] = pt[2];
-        tris[idx].normals[0][0] = normals[3*ptIds[0]+0];
-        tris[idx].normals[0][1] = normals[3*ptIds[0]+1];
-        tris[idx].normals[0][2] = normals[3*ptIds[0]+2];
-        tris[idx].fieldValue[0] = (color_ptr[ptIds[0]]-1)/5.;
+        global_tris[idx].X[0] = pt[0];
+        global_tris[idx].Y[0] = pt[1];
+        global_tris[idx].Z[0] = pt[2];
+        global_tris[idx].normals[0][0] = normals[3*ptIds[0]+0];
+        global_tris[idx].normals[0][1] = normals[3*ptIds[0]+1];
+        global_tris[idx].normals[0][2] = normals[3*ptIds[0]+2];
+        global_tris[idx].fieldValue[0] = (color_ptr[ptIds[0]]-1)/5.;
         pt = pts->GetPoint(ptIds[1]);
-        tris[idx].X[1] = pt[0];
-        tris[idx].Y[1] = pt[1];
-        tris[idx].Z[1] = pt[2];
-        tris[idx].normals[1][0] = normals[3*ptIds[1]+0];
-        tris[idx].normals[1][1] = normals[3*ptIds[1]+1];
-        tris[idx].normals[1][2] = normals[3*ptIds[1]+2];
-        tris[idx].fieldValue[1] = (color_ptr[ptIds[1]]-1)/5.;
+        global_tris[idx].X[1] = pt[0];
+        global_tris[idx].Y[1] = pt[1];
+        global_tris[idx].Z[1] = pt[2];
+        global_tris[idx].normals[1][0] = normals[3*ptIds[1]+0];
+        global_tris[idx].normals[1][1] = normals[3*ptIds[1]+1];
+        global_tris[idx].normals[1][2] = normals[3*ptIds[1]+2];
+        global_tris[idx].fieldValue[1] = (color_ptr[ptIds[1]]-1)/5.;
         pt = pts->GetPoint(ptIds[2]);
-        tris[idx].X[2] = pt[0];
-        tris[idx].Y[2] = pt[1];
-        tris[idx].Z[2] = pt[2];
-        tris[idx].normals[2][0] = normals[3*ptIds[2]+0];
-        tris[idx].normals[2][1] = normals[3*ptIds[2]+1];
-        tris[idx].normals[2][2] = normals[3*ptIds[2]+2];
-        tris[idx].fieldValue[2] = (color_ptr[ptIds[2]]-1)/5.;
+        global_tris[idx].X[2] = pt[0];
+        global_tris[idx].Y[2] = pt[1];
+        global_tris[idx].Z[2] = pt[2];
+        global_tris[idx].normals[2][0] = normals[3*ptIds[2]+0];
+        global_tris[idx].normals[2][1] = normals[3*ptIds[2]+1];
+        global_tris[idx].normals[2][2] = normals[3*ptIds[2]+2];
+        global_tris[idx].fieldValue[2] = (color_ptr[ptIds[2]]-1)/5.;
     }
 
-    return tris;
+    return global_tris;
 }
+
+std::vector<Triangle> global_tris = GetTriangles();
 
 //
 // Function: GetColorMap
@@ -165,6 +167,8 @@ GetColorMap(void)
 
     return ptr;
 }
+
+unsigned char *global_colors = GetColorMap();
 
 
 
@@ -253,24 +257,22 @@ vtk441Mapper::RenderBox(vtkRenderer *ren, vtkActor *act)
 void
 vtk441Mapper::RenderBlob(vtkRenderer *ren, vtkActor *act)
 {
-      std::vector<Triangle> tris = GetTriangles();
-      unsigned char *colors = GetColorMap();
       RemoveVTKOpenGLStateSideEffects();
       SetupLight();
       glEnable(GL_COLOR_MATERIAL);
       glBegin(GL_TRIANGLES);
       float ambient[3] = {1,1,1};
       glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ambient);
-      for(int i = 0; i < tris.size(); ++i)
+      for(int i = 0; i < global_tris.size(); ++i)
       {
-          int c0 = (int)colors[(int)(3*(tris[i].fieldValue[0]*255)+0)];
-          int c1 = (int)colors[(int)(3*(tris[i].fieldValue[1]*255)+1)];
-          int c2 = (int)colors[(int)(3*(tris[i].fieldValue[2]*255)+2)];
+          int c0 = (int)global_colors[(int)(3*(global_tris[i].fieldValue[0]*255)+0)];
+          int c1 = (int)global_colors[(int)(3*(global_tris[i].fieldValue[1]*255)+1)];
+          int c2 = (int)global_colors[(int)(3*(global_tris[i].fieldValue[2]*255)+2)];
           glColor3ub(c0,c1,c2);
           for(int j = 0; j < 3; ++j)
-              glVertex3f(tris[i].X[j], 
-                         tris[i].Y[j], 
-                         tris[i].Z[j]);
+              glVertex3f(global_tris[i].X[j], 
+                         global_tris[i].Y[j], 
+                         global_tris[i].Z[j]);
       }
       glEnd();
 }
