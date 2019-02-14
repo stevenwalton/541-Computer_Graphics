@@ -789,17 +789,36 @@ Triangle::calculatePhongShading(LightingParameters &lp,
     double rNorm = 0;
     for(int i = 0; i < 3; ++i)
     {
-        r[i] = 2*(lp.lightDir[i]*n[i])*n[i] - lp.lightDir[i];
+        r[i] = 2*(n[i]*-lp.lightDir[i])*n[i] + lp.lightDir[i];
         rNorm += (r[i]*r[i]);
     }
     rNorm = sqrt(rNorm);
     for(int i = 0; i < 3; ++i)
         r[i] /= rNorm;
-    double spec = 0;
+
+    double cposNorm = 0;
     for(int i = 0; i < 3; ++i)
-        spec += ;
+        cposNorm += c.position[i]*c.position[i];
+    cposNorm = sqrt(cposNorm);
+    for(int i = 0; i < 3; ++i)
+        c.position[i] /= cposNorm;
+    double view_dir[3] = { c.position[0] - n[0],
+                           c.position[1] - n[1],
+                           c.position[2] - n[2]};
+    //double view_dir[3] = {0,0,-1};
+    double vd_norm = 0;
+    for(int i = 0; i < 3; ++i)
+        vd_norm += (view_dir[i]*view_dir[i]);
+    vd_norm = sqrt(vd_norm);
+    for(int i = 0; i < 3; ++i)
+        view_dir[i] /= vd_norm;
+    double spec = 0;
+    // <R,V>
+    for(int i = 0; i < 3; ++i)
+        spec += r[i]*view_dir[i];
+        //spec += r[i]*n[i];
         //spec += c.position[i]*r[i];
-    (spec < 0) ? spec = -pow(fabs(spec),lp.alpha) : spec = 0;
+    (spec < 0) ? spec = pow(fabs(spec),lp.alpha) : spec = 0;
 
 
     /* 
@@ -810,8 +829,8 @@ Triangle::calculatePhongShading(LightingParameters &lp,
      *      [ ] Specular
      */
     //double phong = lp.Kd*dif;
-    double phong = -lp.Ks*spec;
-    //double phong = lp.Ka + (lp.Kd*dif);
+    //double phong = lp.Ks*spec;
+    double phong = lp.Ka + (lp.Kd*dif) + lp.Ks*spec;
     return phong;
 }
 
