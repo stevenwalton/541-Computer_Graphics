@@ -369,6 +369,7 @@ class Triangle
         double          diffuse(LightingParameters &, double *normals);
         void            specular(void);
         double          calculatePhongShading(LightingParameters &,
+                                              double *vert,
                                               Camera &c,
                                               double *n);
 };
@@ -377,7 +378,7 @@ void
 Triangle::raster()
 {
     getMinMax();
-    applyShading();
+    //applyShading();
     if(isArbitrary())
         splitTriangle();
     else
@@ -405,7 +406,8 @@ Triangle::applyShading()
 {
     for(int i = 0; i < 3; ++i)
     {
-        double phong = calculatePhongShading(lp, c, normals[i]);
+        double vert[3] = {X[i],Y[i],Z[i]};
+        double phong = calculatePhongShading(lp, vert,c, normals[i]);
         for(int j = 0; j < 3; ++j)
         {
             colors[i][j] *= phong;
@@ -751,6 +753,7 @@ Triangle::specular(LightingParameters &lp, double *normal)
 
 double
 Triangle::calculatePhongShading(LightingParameters &lp,
+                                double *vert,
                                 Camera &c, // viewing direction
                                 double *n) // Normal
 {
@@ -768,12 +771,26 @@ Triangle::calculatePhongShading(LightingParameters &lp,
     for(int i = 0; i < 3; ++i)
         n[i] /= normals_norm;
     // Normalize lp direction
-    double lpNorm = 0;
-    for(int i = 0; i < 3; ++i)
-        lpNorm += (lp.lightDir[i] * lp.lightDir[i]);
-    lpNorm = sqrt(lpNorm);
-    for(int i = 0; i < 3; ++i)
-        lp.lightDir[i] /= lpNorm;
+    //
+    //      Don't Need
+    //
+    //double lpNorm = 0;
+    //for(int i = 0; i < 3; ++i)
+    //    lpNorm += (lp.lightDir[i] * lp.lightDir[i]);
+    //lpNorm = sqrt(lpNorm);
+    //for(int i = 0; i < 3; ++i)
+    //    lp.lightDir[i] /= lpNorm;
+    //for(int i = 0; i < 3; ++i)
+    //    cerr << "lightDir[" << i << "] = " << lp.lightDir[i] << endl;
+
+    //double vertNorm = 0;
+    //for(int i = 0; i < 3; ++i)
+    //    vertNorm += (vert[i] * vert[i]);
+    //lpNorm = sqrt(vertNorm);
+    //for(int i = 0; i < 3; ++i)
+    //    vert[i] /= vertNorm;
+    //for(int i = 0; i < 3; ++i)
+    //    cerr << "vert[" << i << "] = " << vert[i] << endl;
 
     /*
      *      Do our shading
@@ -789,23 +806,30 @@ Triangle::calculatePhongShading(LightingParameters &lp,
     double rNorm = 0;
     for(int i = 0; i < 3; ++i)
     {
-        r[i] = 2*(n[i]*-lp.lightDir[i])*n[i] + lp.lightDir[i];
+        r[i] = 2*(n[i]*lp.lightDir[i])*n[i] - lp.lightDir[i];
         rNorm += (r[i]*r[i]);
     }
-    rNorm = sqrt(rNorm);
-    for(int i = 0; i < 3; ++i)
-        r[i] /= rNorm;
+    //rNorm = sqrt(rNorm);
+    //for(int i = 0; i < 3; ++i)
+    //    r[i] /= rNorm;
+    //for(int i = 0; i < 3; ++i)
+    //    cerr << "r[" << i << "] = " << r[i] << endl;
 
+    // Normalize camera position
     double cposNorm = 0;
     for(int i = 0; i < 3; ++i)
         cposNorm += c.position[i]*c.position[i];
     cposNorm = sqrt(cposNorm);
     for(int i = 0; i < 3; ++i)
         c.position[i] /= cposNorm;
-    double view_dir[3] = { c.position[0] - n[0],
-                           c.position[1] - n[1],
-                           c.position[2] - n[2]};
+    //double view_dir[3] = { vert[0] - c.position[0] ,
+    //                       vert[1] - c.position[1] ,
+    //                       vert[2] - c.position[2] };
+    double view_dir[3] = { c.position[0] - vert[0],
+                           c.position[1] - vert[1],
+                           c.position[2] - vert[2]};
     //double view_dir[3] = {0,0,-1};
+    // Normalize view direction
     double vd_norm = 0;
     for(int i = 0; i < 3; ++i)
         vd_norm += (view_dir[i]*view_dir[i]);
@@ -816,21 +840,38 @@ Triangle::calculatePhongShading(LightingParameters &lp,
     // <R,V>
     for(int i = 0; i < 3; ++i)
         spec += r[i]*view_dir[i];
+    spec *= -1;
+    //cerr << "<v,r>: " << spec << endl;
         //spec += r[i]*n[i];
         //spec += c.position[i]*r[i];
-    (spec < 0) ? spec = pow(fabs(spec),lp.alpha) : spec = 0;
+    //(spec < 0) ? spec = pow(fabs(spec),lp.alpha) : spec = 0;
+    //cerr << "spec: " << spec << endl;
+    //spec = pow((spec),lp.alpha);
+    //cerr << "spec: " << spec << endl;
+    //cin.ignore();
+    if(spec < 0) spec = 0;
+    spec = pow(spec,lp.alpha);
 
 
     /* 
      *      Does it work?
-     *      [*] Ambient
-     *      [ ] Diffuse
+     *      [x] Ambient
+     *      [~] Diffuse
      *          - Many are off by one pixel on only one color
+     *          - First 10 triangles match
      *      [ ] Specular
+     *          [ ] R's match
+     *          [x] Verts  match
+     *          [x] Norms match
+     *          - Has spec > 0 @ correct tris and points, but numbers are different
      */
-    //double phong = lp.Kd*dif;
+    //cerr << "Ambient: " << lp.Ka << endl;
+    //cerr << "Diffuse: " << lp.Kd*dif << endl;
+    //cerr << "Specula: " << lp.Ks*spec << endl;
+    //cin.ignore();
+    double phong = lp.Kd*dif;
     //double phong = lp.Ks*spec;
-    double phong = lp.Ka + (lp.Kd*dif) + lp.Ks*spec;
+    //double phong = lp.Ka + (lp.Kd*dif) + lp.Ks*spec;
     return phong;
 }
 
@@ -983,6 +1024,7 @@ normalize(std::vector<Triangle> t)
 void
 rotateAndRender(Matrix &m, Triangle t)
 {
+    t.applyShading();
     for(int i = 0; i < 3; ++i)
     {
         double pIn[4] = {t.X[i], t.Y[i], t.Z[i], 1};
@@ -1007,6 +1049,7 @@ int writeScreen(int c0, int c1, char* s)
    Matrix m = camera.VT_CT_DT();
    for(int i = 0; i < triangles.size(); ++i)
    {
+       cerr << "Triangle: " << i << endl;
        triangles[i].setCamera(camera);
        rotateAndRender(m, triangles[i]);
    }
