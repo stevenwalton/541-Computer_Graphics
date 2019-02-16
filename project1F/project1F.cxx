@@ -345,6 +345,7 @@ class Triangle
         double          Z[3];
         double          colors[3][3];
         double          normals[3][3];
+        double          shading[3][3];
         double          ymin, ymax;
         int             ymin_index, ymax_index, ymid_index;
         Camera          c; // Functions
@@ -378,7 +379,6 @@ void
 Triangle::raster()
 {
     getMinMax();
-    //applyShading();
     if(isArbitrary())
         splitTriangle();
     else
@@ -757,42 +757,6 @@ Triangle::calculatePhongShading(LightingParameters &lp,
                                 Camera &c, // viewing direction
                                 double *n) // Normal
 {
-    /*
-     *      Double check that everything 
-     *      that should be normalized is
-     */
-    // Normalize the normals
-    //double normals_norm = 0;
-    // Calculate magnitude
-    //for(int i = 0; i < 3; ++i)
-    //    normals_norm += (n[i]*n[i]);
-    //normals_norm = sqrt(normals_norm);
-    // Divide each by magnitude
-    //for(int i = 0; i < 3; ++i)
-    //    n[i] /= normals_norm;
-    //for(int i = 0; i < 3; ++i)
-    //    cerr << "n[" << i << "] = " << n[i] << endl;
-    // Normalize lp direction
-    //
-    //      Don't Need
-    //
-    //double lpNorm = 0;
-    //for(int i = 0; i < 3; ++i)
-    //    lpNorm += (lp.lightDir[i] * lp.lightDir[i]);
-    //lpNorm = sqrt(lpNorm);
-    //for(int i = 0; i < 3; ++i)
-    //    lp.lightDir[i] /= lpNorm;
-    //for(int i = 0; i < 3; ++i)
-    //    cerr << "lightDir[" << i << "] = " << lp.lightDir[i] << endl;
-
-    //double vertNorm = 0;
-    //for(int i = 0; i < 3; ++i)
-    //    vertNorm += (vert[i] * vert[i]);
-    //lpNorm = sqrt(vertNorm);
-    //for(int i = 0; i < 3; ++i)
-    //    vert[i] /= vertNorm;
-    //for(int i = 0; i < 3; ++i)
-    //    cerr << "vert[" << i << "] = " << vert[i] << endl;
 
     /*
      *      Do our shading
@@ -813,25 +777,9 @@ Triangle::calculatePhongShading(LightingParameters &lp,
     innerProd *= 2;
     for(int i = 0; i < 3; ++i)
         r[i] = innerProd*n[i] - lp.lightDir[i];
-    //rNorm = sqrt(rNorm);
-    //for(int i = 0; i < 3; ++i)
-    //    cerr << "r[" << i << "] = " << r[i] << endl;
-
-    // Normalize camera position
-    //double cposNorm = 0;
-    //for(int i = 0; i < 3; ++i)
-    //    cposNorm += c.position[i]*c.position[i];
-    //cposNorm = sqrt(cposNorm);
-    //for(int i = 0; i < 3; ++i)
-    //    c.position[i] /= cposNorm;
-    //double view_dir[3] = { vert[0] - c.position[0] ,
-    //                       vert[1] - c.position[1] ,
-    //                       vert[2] - c.position[2] };
     double view_dir[3] = { c.position[0] - vert[0],
                            c.position[1] - vert[1],
                            c.position[2] - vert[2]};
-    //double view_dir[3] = {0,0,-1};
-    // Normalize view direction
     double vd_norm = 0;
     for(int i = 0; i < 3; ++i)
         vd_norm += (view_dir[i]*view_dir[i]);
@@ -842,14 +790,6 @@ Triangle::calculatePhongShading(LightingParameters &lp,
     // <R,V>
     for(int i = 0; i < 3; ++i)
         spec += r[i]*view_dir[i];
-    //cerr << "<v,r>: " << spec << endl;
-        //spec += r[i]*n[i];
-        //spec += c.position[i]*r[i];
-    //(spec < 0) ? spec = pow(fabs(spec),lp.alpha) : spec = 0;
-    //cerr << "spec: " << spec << endl;
-    //spec = pow((spec),lp.alpha);
-    //cerr << "spec: " << spec << endl;
-    //cin.ignore();
     if(spec < 0) spec = 0;
     spec = pow(spec,lp.alpha);
 
@@ -860,7 +800,7 @@ Triangle::calculatePhongShading(LightingParameters &lp,
      *      [~] Diffuse
      *          - Many are off by one pixel on only one color
      *          - First 10 triangles match
-     *      [ ] Specular
+     *      [~] Specular
      *          [x] R's match
      *          [x] Verts  match
      *          [x] Norms match
@@ -869,10 +809,11 @@ Triangle::calculatePhongShading(LightingParameters &lp,
     //cerr << "Ambient: " << lp.Ka << endl;
     //cerr << "Diffuse: " << lp.Kd*dif << endl;
     //cerr << "Specula: " << lp.Ks*spec << endl;
-    //cin.ignore();
     //double phong = lp.Kd*dif;
-    double phong = lp.Ks*spec;
-    //double phong = lp.Ka + (lp.Kd*dif) + lp.Ks*spec;
+    //double phong = lp.Ks*spec;
+    double phong = lp.Ka + (lp.Kd*dif) + lp.Ks*spec;
+    //cerr << "Phong: " << phong << endl;
+    //cin.ignore();
     return phong;
 }
 
