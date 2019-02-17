@@ -147,12 +147,12 @@ class Screen
       double          *zbuffer;
       int             width, height;
       // Functions
-      void SetPixel(int c, int r, double z, double color[3]);
+      void SetPixel(int c, int r, double z, double color[3], double s);
 };
 
 
 void
-Screen::SetPixel(int c, int r, double z, double color[3])
+Screen::SetPixel(int c, int r, double z, double color[3], double s)
 {
     int pixel = ((r*width) + c);
     if (r < 0 || r >= height || c < 0 || c>= width)
@@ -169,7 +169,11 @@ Screen::SetPixel(int c, int r, double z, double color[3])
     zbuffer[pixel] = z;
     int index = pixel*3;
     for(int i = 0; i < 3; ++i)
-        buffer[index+i] = ceil_441(color[i]*255.);
+    {
+        double c = color[i]*s;
+        if (c > 1) c = 1;
+        buffer[index+i] = ceil_441(c*255.);
+    }
 }
 
 // Make a global object
@@ -345,7 +349,7 @@ class Triangle
         double          Z[3];
         double          colors[3][3];
         double          normals[3][3];
-        double          shading[3][3];
+        double          shading[3];
         double          ymin, ymax;
         int             ymin_index, ymax_index, ymid_index;
         Camera          c; // Functions
@@ -355,7 +359,7 @@ class Triangle
         bool            isArbitrary();
         double          getIntercept(double x[3], double y[3]);
         void            splitTriangle();
-        void            drawTriangle(double lX[3], double lY[3], double lZ[3], double c[3][3]);
+        void            drawTriangle(double lX[3], double lY[3], double lZ[3], double c[3][3], double shad[3]);
         void            orientTriangleAndDraw();
         void            lerp(double x0, double x1, double x2, 
                              double f0[3], double f1[3],
@@ -407,13 +411,15 @@ Triangle::applyShading()
     for(int i = 0; i < 3; ++i)
     {
         double vert[3] = {X[i],Y[i],Z[i]};
-        double phong = calculatePhongShading(lp, vert,c, normals[i]);
-        for(int j = 0; j < 3; ++j)
-        {
-            colors[i][j] *= phong;
-            if(colors[i][j] > 1)
-                colors[i][j] = 1;
-        }
+        //double phong = calculatePhongShading(lp, vert,c, normals[i]);
+        shading[i] = calculatePhongShading(lp, vert, c, normals[i]);
+
+        //for(int j = 0; j < 3; ++j)
+        //{
+        //    colors[i][j] *= phong;
+        //    if(colors[i][j] > 1)
+        //        colors[i][j] = 1;
+        //}
     }
 }
 
@@ -435,6 +441,7 @@ Triangle::orientTriangleAndDraw()
     double x[3];
     double y[3];
     double z[3];
+    double s[3];
     double c[3][3];
     for(int i = 0; i < 3; ++i)
     {
@@ -443,6 +450,7 @@ Triangle::orientTriangleAndDraw()
             x[0] = X[i];
             y[0] = Y[i];
             z[0] = Z[i];
+            s[0] = shading[i];
             c[0][0] = colors[i][0];
             c[0][1] = colors[i][1];
             c[0][2] = colors[i][2];
@@ -450,6 +458,7 @@ Triangle::orientTriangleAndDraw()
             x[1] = X[(i+1)%3];
             y[1] = Y[(i+1)%3];
             z[1] = Z[(i+1)%3];
+            s[1] = shading[(i+1)%3];
             c[1][0] = colors[(i+1)%3][0];
             c[1][1] = colors[(i+1)%3][1];
             c[1][2] = colors[(i+1)%3][2];
@@ -457,6 +466,7 @@ Triangle::orientTriangleAndDraw()
             x[2] = X[(i+2)%3];
             y[2] = Y[(i+2)%3];
             z[2] = Z[(i+2)%3];
+            s[2] = shading[(i+2)%3];
             c[2][0] = colors[(i+2)%3][0];
             c[2][1] = colors[(i+2)%3][1];
             c[2][2] = colors[(i+2)%3][2];
@@ -467,7 +477,7 @@ Triangle::orientTriangleAndDraw()
         cerr << "y's aren't right" << endl;
         abort();
     }
-    drawTriangle(x,y,z,c);
+    drawTriangle(x,y,z,c,s);
 }
 
 double
@@ -518,6 +528,10 @@ Triangle::splitTriangle()
     lC[2][1] = colors[ymin_index][1];
     lC[2][2] = colors[ymin_index][2];
 
+    // get shading at intercept
+    double shadingIntercept = lerp(Y[ymax_index], Y[ymin_index], Y[ymid_index], shading[ymax_index], shading[ymin_index]);
+    double lShading[3] = {shading[ymid_index], shadingIntercept, shading[ymin_index]};
+
     // Double check that is lower
     if(lY[2] != ymin)
     {
@@ -537,10 +551,11 @@ Triangle::splitTriangle()
              << lX[2] << " " << lY[2] << endl;
         abort();
     }
-    drawTriangle(lX,lY,lZ,lC);
+    drawTriangle(lX,lY,lZ,lC,lShading);
     double uX[3] = {X[ymid_index], xintercept, X[ymax_index]};
     double uY[3] = {Y[ymid_index], Y[ymid_index], Y[ymax_index]};
     double uZ[3] = {Z[ymid_index], zintercept, Z[ymax_index]};
+    double uShading[3] = {shading[ymid_index], shadingIntercept, shading[ymax_index]};
 
     double uC[3][3];
     uC[0][0] = colors[ymid_index][0];
@@ -558,7 +573,7 @@ Triangle::splitTriangle()
         cerr << "Not a upper triangle" << endl;
         abort();
     }
-    drawTriangle(uX,uY,uZ,uC);
+    drawTriangle(uX,uY,uZ,uC,uShading);
 }
   
 // For colors
@@ -586,7 +601,7 @@ Triangle::lerp(double x0, double x1, double x2,             // coordinates
 }
 
 void
-Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
+Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3], double s[3])
 {
     int lowerY = ceil_441(*std::min_element(y,y+3));
     int upperY = floor_441(*std::max_element(y,y+3));
@@ -615,10 +630,13 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
         double x0 = x[0];
         double z0 = z[0];
         double c0[3] = {c[0][0], c[0][1], c[0][2]};
+        double s0 = s[0];
         x[0] = x[1];
         x[1] = x0;
         z[0] = z[1];
         z[1] = z0;
+        s[0] = s[1];
+        s[1] = s0;
         c[0][0] = c[1][0];
         c[0][1] = c[1][1];
         c[0][2] = c[1][2];
@@ -655,19 +673,22 @@ Triangle::drawTriangle(double x[3], double y[3], double z[3], double c[3][3])
         else
             rightX = (row - b1)/m1;
         // LERPing in the y's
-        double lz, rz;
+        double lz, rz, ls, rs;
         double fl[3], fr[3];
         lz = lerp(y[2], y[0], row, z[2], z[0]);
         rz = lerp(y[2], y[1], row, z[2], z[1]);
         lerp(y[2], y[0], row, c[2], c[0], fl); // left color
         lerp(y[2], y[1], row, c[2], c[1], fr); // right color
+        ls = lerp(y[2], y[0], row, s[2], s[0]);
+        rs = lerp(y[2], y[1], row, s[2], s[1]);
         // Col loop
         for(int col = ceil_441(leftX); col <= floor_441(rightX); ++col)
         {
             double color[3] = {0,0,0};
             double z = lerp(leftX, rightX, col, lz, rz);
+            double shad = lerp(leftX, rightX, col, ls, rs);
             lerp(leftX, rightX, col, fl, fr, color);    // color
-            screen.SetPixel(col,row,z,color);
+            screen.SetPixel(col,row,z,color,shad);
         }
     }
 }
