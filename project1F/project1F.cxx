@@ -1027,7 +1027,7 @@ int main()
     {
         char fname[256];
         sprintf(fname, "frame%.3i",i);
-        //cerr << "Frame: " << fname << endl;
+        cerr << "Frame: " << fname << endl;
         writeScreen(i,1000, fname);
     }
     return 0;
