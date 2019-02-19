@@ -221,7 +221,6 @@ class vtk441Mapper : public vtkOpenGLPolyDataMapper
                               {RenderBox(ren, act);};
    // Let's just render the box once, right?
    virtual void            RenderBox(vtkRenderer *ren, vtkActor *act);
-   virtual void            RenderBlob(vtkRenderer *ren, vtkActor *act);
 };
 
 void
@@ -254,8 +253,22 @@ vtk441Mapper::RenderBox(vtkRenderer *ren, vtkActor *act)
       glEnd();
 }
 
+
+class vtk441MapperPart1 : public vtk441Mapper
+{
+ public:
+   static vtk441MapperPart1 *New();
+   
+   void         RenderBlob(vtkRenderer *ren, vtkActor *act);
+   virtual void RenderPiece(vtkRenderer *ren, vtkActor *act)
+   {
+      RenderBox(ren, act); // In parent
+      RenderBlob(ren, act);
+   }
+};
+
 void
-vtk441Mapper::RenderBlob(vtkRenderer *ren, vtkActor *act)
+vtk441MapperPart1::RenderBlob(vtkRenderer *ren, vtkActor *act)
 {
       RemoveVTKOpenGLStateSideEffects();
       SetupLight();
@@ -265,29 +278,22 @@ vtk441Mapper::RenderBlob(vtkRenderer *ren, vtkActor *act)
       glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ambient);
       for(int i = 0; i < global_tris.size(); ++i)
       {
-          int c0 = (int)global_colors[(int)(3*(global_tris[i].fieldValue[0]*255)+0)];
-          int c1 = (int)global_colors[(int)(3*(global_tris[i].fieldValue[1]*255)+1)];
-          int c2 = (int)global_colors[(int)(3*(global_tris[i].fieldValue[2]*255)+2)];
-          glColor3ub(c0,c1,c2);
           for(int j = 0; j < 3; ++j)
+          {
+              int index = 3*(int)(global_tris[i].fieldValue[j]*255);
+              glColor3ub(global_colors[index + 0],
+                         global_colors[index + 1],
+                         global_colors[index + 2]);
+              glNormal3f(global_tris[i].normals[j][0],
+                         global_tris[i].normals[j][1],
+                         global_tris[i].normals[j][2]);
               glVertex3f(global_tris[i].X[j], 
                          global_tris[i].Y[j], 
                          global_tris[i].Z[j]);
+          }
       }
       glEnd();
 }
-
-class vtk441MapperPart1 : public vtk441Mapper
-{
- public:
-   static vtk441MapperPart1 *New();
-   
-   virtual void RenderPiece(vtkRenderer *ren, vtkActor *act)
-   {
-      RenderBox(ren, act);
-      RenderBlob(ren, act);
-   }
-};
 
 
 vtkStandardNewMacro(vtk441MapperPart1);
@@ -304,12 +310,42 @@ class vtk441MapperPart2 : public vtk441Mapper
    {
      initialized = false;
    }
+
+   void         RenderBlob(vtkRenderer *ren, vtkActor *act);
    virtual void RenderPiece(vtkRenderer *ren, vtkActor *act)
    {
-       RenderBox(ren,act);
+       RenderBox(ren,act); // In parent
        RenderBlob(ren,act);
    }
 };
+
+void
+vtk441MapperPart2::RenderBlob(vtkRenderer *ren, vtkActor *act)
+{
+      RemoveVTKOpenGLStateSideEffects();
+      SetupLight();
+      glEnable(GL_COLOR_MATERIAL);
+      glBegin(GL_TRIANGLES);
+      float ambient[3] = {1,1,1};
+      glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ambient);
+      for(int i = 0; i < global_tris.size(); ++i)
+      {
+          for(int j = 0; j < 3; ++j)
+          {
+              int index = 3*(int)(global_tris[i].fieldValue[j]*255);
+              glColor3ub(global_colors[index + 0],
+                         global_colors[index + 1],
+                         global_colors[index + 2]);
+              glNormal3f(global_tris[i].normals[j][0],
+                         global_tris[i].normals[j][1],
+                         global_tris[i].normals[j][2]);
+              glVertex3f(global_tris[i].X[j], 
+                         global_tris[i].Y[j], 
+                         global_tris[i].Z[j]);
+          }
+      }
+      glEnd();
+}
 
 vtkStandardNewMacro(vtk441MapperPart2);
 
