@@ -219,16 +219,15 @@ class vtk441Mapper : public vtkOpenGLPolyDataMapper
    }
    inline virtual void     RenderPiece(vtkRenderer *ren, vtkActor *act) 
                               {RenderBox(ren, act);};
-   // Let's just render the box once, right?
+   // Let's just make the box once, right?
    virtual void            RenderBox(vtkRenderer *ren, vtkActor *act);
 };
 
 void
 vtk441Mapper::RenderBox(vtkRenderer *ren, vtkActor *act)
 {
-      RemoveVTKOpenGLStateSideEffects();
-      SetupLight();
       glEnable(GL_COLOR_MATERIAL);
+      glColor3ub(255,255,255);
       glBegin(GL_LINE_STRIP);
       // Bottom Square
       glVertex3f(-10,-10,-10);
@@ -274,8 +273,6 @@ vtk441MapperPart1::RenderBlob(vtkRenderer *ren, vtkActor *act)
       SetupLight();
       glEnable(GL_COLOR_MATERIAL);
       glBegin(GL_TRIANGLES);
-      float ambient[3] = {1,1,1};
-      glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ambient);
       for(int i = 0; i < global_tris.size(); ++i)
       {
           for(int j = 0; j < 3; ++j)
@@ -305,6 +302,7 @@ class vtk441MapperPart2 : public vtk441Mapper
    
    GLuint displayList;
    bool   initialized;
+   GLuint texture;
 
    vtk441MapperPart2()
    {
@@ -317,25 +315,45 @@ class vtk441MapperPart2 : public vtk441Mapper
        RenderBox(ren,act); // In parent
        RenderBlob(ren,act);
    }
+   void         SetupTexture();
 };
+
+void
+vtk441MapperPart2::SetupTexture()
+{
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_1D, texture);
+    glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT); 
+    glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, global_colors);
+    initialized = true;
+}
+
 
 void
 vtk441MapperPart2::RenderBlob(vtkRenderer *ren, vtkActor *act)
 {
       RemoveVTKOpenGLStateSideEffects();
       SetupLight();
+
+      if(!initialized) SetupTexture();
+
       glEnable(GL_COLOR_MATERIAL);
-      glBegin(GL_TRIANGLES);
+      glBindTexture(GL_TEXTURE_1D, texture);
+      glEnable(GL_TEXTURE_1D);
       float ambient[3] = {1,1,1};
       glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ambient);
+
       for(int i = 0; i < global_tris.size(); ++i)
       {
+
+          glBegin(GL_TRIANGLES);
           for(int j = 0; j < 3; ++j)
           {
-              int index = 3*(int)(global_tris[i].fieldValue[j]*255);
-              glColor3ub(global_colors[index + 0],
-                         global_colors[index + 1],
-                         global_colors[index + 2]);
+              glTexCoord1f(global_tris[i].fieldValue[0]);
               glNormal3f(global_tris[i].normals[j][0],
                          global_tris[i].normals[j][1],
                          global_tris[i].normals[j][2]);
@@ -343,8 +361,9 @@ vtk441MapperPart2::RenderBlob(vtkRenderer *ren, vtkActor *act)
                          global_tris[i].Y[j], 
                          global_tris[i].Z[j]);
           }
+          glEnd();
       }
-      glEnd();
+      glDisable(GL_TEXTURE_1D);
 }
 
 vtkStandardNewMacro(vtk441MapperPart2);
