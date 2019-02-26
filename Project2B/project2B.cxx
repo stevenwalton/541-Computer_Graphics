@@ -119,6 +119,9 @@ class vtk441MapperPart3 : public vtk441Mapper
    double tongueSize;
    double neckSize;
    double bodySize;
+   double legSize;
+   double footSize;
+   double tailSize;
 
    vtk441MapperPart3()
    {
@@ -133,6 +136,9 @@ class vtk441MapperPart3 : public vtk441Mapper
      tongueSize = 3;
      neckSize = 6;
      bodySize = 12;
+     legSize = 10;
+     footSize = 3;
+     tailSize = 5;
    }
 
    void DrawCylinder()
@@ -265,12 +271,14 @@ class vtk441MapperPart3 : public vtk441Mapper
        }
    }
 
-   void Brown(void) { glColor3ub(205, 133, 63); };
+   void Brown(void)      { glColor3ub(205, 133, 63); };
    void LightBrown(void) { glColor3ub(245, 222, 179); };
-   void DarkBrown(void) { glColor3ub(162, 82, 45); };
-   void Pink(void) { glColor3ub(250, 128, 114); };
-   void White(void) { glColor3ub(255, 255, 255); };
-   void Black(void) { glColor3ub(0, 0, 0); };
+   void DarkBrown(void)  { glColor3ub(162, 82, 45); };
+   void Pink(void)       { glColor3ub(250, 128, 114); };
+   void White(void)      { glColor3ub(255, 255, 255); };
+   void Black(void)      { glColor3ub(0, 0, 0); };
+   void Red(void)        { glColor3ub(255,0,0); };
+   void Blue(void)       { glColor3ub(0,0,255); };
 
    void DrawEyeball(void)
    {
@@ -344,6 +352,14 @@ class vtk441MapperPart3 : public vtk441Mapper
        DrawSphere();
        glPopMatrix();
 
+       // Nose
+       Black();
+       glPushMatrix();
+       glScalef(1,0.7,0.7);
+       glTranslatef(3.25,0,0.07);
+       DrawSphere();
+       glPopMatrix();
+
        // Tongue
        Pink();
        glPushMatrix();
@@ -368,6 +384,88 @@ class vtk441MapperPart3 : public vtk441Mapper
        glScalef(bodySize, bodySize/2, bodySize/2.2);
        glTranslatef(-1.2,0,-1);
        DrawSphere();
+       glPopMatrix();
+
+       // Leg
+       Brown();
+       glPushMatrix();
+       glScalef(legSize/8, legSize/8, legSize);
+       glTranslatef(-6,2.6,-1.6);
+       DrawCylinder();
+       glPopMatrix();
+
+       Brown();
+       glPushMatrix();
+       glScalef(legSize/8, legSize/8, legSize);
+       glTranslatef(-6,-2.6,-1.6);
+       DrawCylinder();
+       glPopMatrix();
+
+       Brown();
+       glPushMatrix();
+       glScalef(legSize/8, legSize/8, legSize);
+       glTranslatef(-17,-2.6,-1.6);
+       DrawCylinder();
+       glPopMatrix();
+
+       Brown();
+       glPushMatrix();
+       glScalef(legSize/8, legSize/8, legSize);
+       glTranslatef(-17,2.6,-1.6);
+       DrawCylinder();
+       glPopMatrix();
+
+       // Feet
+       Brown();
+       glPushMatrix();
+       glScalef(footSize,footSize/1.4,footSize/4.1);
+       glTranslatef(-2.1,1.37,-21.5);
+       DrawSphere();
+       glPopMatrix();
+
+       Brown();
+       glPushMatrix();
+       glScalef(footSize,footSize/1.4,footSize/4.1);
+       glTranslatef(-2.1,-1.37,-21.5);
+       DrawSphere();
+       glPopMatrix();
+
+       Brown();
+       glPushMatrix();
+       glScalef(footSize,footSize/1.4,footSize/4.1);
+       glTranslatef(-6.7,-1.37,-21.5);
+       DrawSphere();
+       glPopMatrix();
+
+       Brown();
+       glPushMatrix();
+       glScalef(footSize,footSize/1.4,footSize/4.1);
+       glTranslatef(-6.7,1.37,-21.5);
+       DrawSphere();
+       glPopMatrix();
+
+       // Tail
+       DarkBrown();
+       glPushMatrix();
+       glRotatef(-45,0,1,0);
+       glScalef(0.5,0.5, tailSize);
+       glTranslatef(-40,0,3.1);
+       DrawCylinder();
+       glPopMatrix();
+
+       // Bowl
+       Red();
+       glPushMatrix();
+       glScalef(4,4,4);
+       glTranslatef(1,0,-4);
+       DrawCylinder();
+       glPopMatrix();
+
+       Blue();
+       glPushMatrix();
+       glScalef(3.5,3.5,3);
+       glTranslatef(1.15,0,-4.98);
+       DrawCylinder();
        glPopMatrix();
 
    }
