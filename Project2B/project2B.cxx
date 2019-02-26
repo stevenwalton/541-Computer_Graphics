@@ -114,6 +114,11 @@ class vtk441MapperPart3 : public vtk441Mapper
    double eyeHeight; // as proportion of radius above center of sphere
    double pupilSize; // as proportion of eyeballSize
    double eyeAngle; // from center-line, in degrees.  
+   double earSize;
+   double mouthSize;
+   double tongueSize;
+   double neckSize;
+   double bodySize;
 
    vtk441MapperPart3()
    {
@@ -123,6 +128,11 @@ class vtk441MapperPart3 : public vtk441Mapper
      eyeHeight = 0.25;
      pupilSize = 0.25;
      eyeAngle = 22;
+     earSize = 6;
+     mouthSize = 1.5;
+     tongueSize = 3;
+     neckSize = 6;
+     bodySize = 12;
    }
 
    void DrawCylinder()
@@ -304,6 +314,62 @@ class vtk441MapperPart3 : public vtk441Mapper
        glPopMatrix();
 
        glPopMatrix(); // body
+       // Draw right ear
+       DarkBrown();
+       glPushMatrix();
+       glScalef(earSize/2, earSize/6, earSize);
+       glTranslatef(0,3.8,-0.7);
+       DrawSphere();
+       glPopMatrix();
+
+       // Left ear
+       DarkBrown();
+       glPushMatrix();
+       glScalef(earSize/2, earSize/6, earSize);
+       glTranslatef(0,-3.8,-0.7);
+       DrawSphere();
+       glPopMatrix();
+
+       // Mouth
+       LightBrown();
+       glPushMatrix();
+       glScalef(mouthSize/2, mouthSize, mouthSize/4);
+       glTranslatef(4.5,0,-1);
+       DrawSphere();
+       glPopMatrix();
+       LightBrown();
+       glPushMatrix();
+       glScalef(mouthSize/2, mouthSize, mouthSize/4);
+       glTranslatef(4.3,0,-2.5);
+       DrawSphere();
+       glPopMatrix();
+
+       // Tongue
+       Pink();
+       glPushMatrix();
+       glRotatef(55, 0, 1, 0);
+       glScalef(tongueSize, tongueSize/4, tongueSize/12);
+       glTranslatef(0.8,0,11.2);
+       DrawSphere();
+       glPopMatrix();
+
+       // Neck
+       Brown();
+       glPushMatrix();
+       glRotatef(45, 0, 1, 0);
+       glScalef(neckSize/3.5, neckSize/3.5, neckSize);
+       glTranslatef(-0.8,0,-1.2);
+       DrawCylinder();
+       glPopMatrix();
+
+       // Body
+       Brown();
+       glPushMatrix();
+       glScalef(bodySize, bodySize/2, bodySize/2.2);
+       glTranslatef(-1.2,0,-1);
+       DrawSphere();
+       glPopMatrix();
+
    }
 };
 
