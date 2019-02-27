@@ -66,22 +66,12 @@ int main(int argc, char **argv)
             output_file = std::string(argv[2]);
             reference_file = std::string(argv[3]);
             break;
-        //case 6:
-        //    //useEpsCheck = true;
-        //    input_file = std::string(argv[1]);
-        //    output_file = std::string(argv[2]);
-        //    reference_file = std::string(argv[3]);
-        //    //perPixelError = atof(argv[4]);
-        //    //globalError = atof(argv[5]);
-        //    break;
         default:
             std::cerr << "Usage: ./HW1 input_file [output_filename]" 
                       << "[reference_filename] [perPixelError] [globalError]"
                       << std::endl;
             exit(1);
     }
-
-    //checkCudaErrors(cudaFree(0));
 
     cv::Mat image;
     image = cv::imread(input_file.c_str(), CV_LOAD_IMAGE_COLOR);
@@ -115,15 +105,10 @@ int main(int argc, char **argv)
     cudaMemcpy(d_rgbaImage, h_rgbaImage, sizeof(uchar4) * numPixels, cudaMemcpyHostToDevice);
 
 
-    //GpuTimer timer;
-    //timer.Start();
     your_rgba_to_greyscale(h_rgbaImage, d_rgbaImage, d_greyImage, numRows, numCols);
-    //timer.Stop();
     cudaDeviceSynchronize();
 
     cudaMemcpy(h_greyImage, d_greyImage, sizeof(unsigned char)*numPixels, cudaMemcpyDeviceToHost);
-
-    //cv::imwrite(output_file.c_str(), output); // Takes in "output file", "data_ptr
     cv::Mat output(numRows, numCols, CV_8UC1, (void*)h_greyImage);
     cv::imwrite(output_file.c_str(), output);
 
