@@ -47,10 +47,10 @@ void rgba_to_greyscale(const uchar4* const rgbaImage,
     if(index > (numCols*numRows)) return;
     uchar4 rgba = rgbaImage[index];
 
-    //unsigned char I = 0.299f*rgba.x + 0.587f*rgba.y + 0.114f*rgba.z;
-    unsigned char I = __fadd_rn(__fadd_rn(__fmul_rn(0.299f, rgba.x),
-                      __fmul_rn(0.587f, rgba.y)),
-                      __fmul_rn(0.114f, rgba.z));
+    unsigned char I = 0.299f*rgba.x + 0.587f*rgba.y + 0.114f*rgba.z;
+    //unsigned char I = __fadd_rn(__fadd_rn(__fmul_rn(0.299f, rgba.x),
+    //                  __fmul_rn(0.587f, rgba.y)),
+    //                  __fmul_rn(0.114f, rgba.z));
     //greyImage[index] = I;
     greyImage[index] = static_cast<unsigned char>(I);
 }
@@ -71,16 +71,6 @@ your_rgba_to_greyscale(const uchar4 * const h_rgbaImage,
 /****************************************************/
 /****************************************************/
 
-
-void
-allocateMemory()
-{
-    d_rgbaImage__ = *d_rgbaImage;
-    d_greyImage__ = *d_greyImage;
-  checkCudaErrors(cudaMalloc(d_rgbaImage, sizeof(uchar4) * numPixels));
-  checkCudaErrors(cudaMalloc(d_greyImage, sizeof(unsigned char) * numPixels));
-  checkCudaErrors(cudaMemset(*d_greyImage, 0, numPixels * sizeof(unsigned char))); //make sure no memory is left laying around
-}
 
 void 
 preProcess(uchar4 **inputImage, unsigned char **greyImage,
@@ -112,11 +102,11 @@ preProcess(uchar4 **inputImage, unsigned char **greyImage,
   *inputImage = (uchar4 *)imageRGBA.ptr<unsigned char>(0);
   *greyImage  = imageGrey.ptr<unsigned char>(0);
 
-  //const size_t numPixels = numRows() * numCols();
+  const size_t numPixels = numRows() * numCols();
   //allocate memory on the device for both input and output
-  //checkCudaErrors(cudaMalloc(d_rgbaImage, sizeof(uchar4) * numPixels));
-  //checkCudaErrors(cudaMalloc(d_greyImage, sizeof(unsigned char) * numPixels));
-  //checkCudaErrors(cudaMemset(*d_greyImage, 0, numPixels * sizeof(unsigned char))); //make sure no memory is left laying around
+  checkCudaErrors(cudaMalloc(d_rgbaImage, sizeof(uchar4) * numPixels));
+  checkCudaErrors(cudaMalloc(d_greyImage, sizeof(unsigned char) * numPixels));
+  checkCudaErrors(cudaMemset(*d_greyImage, 0, numPixels * sizeof(unsigned char))); //make sure no memory is left laying around
 
   //copy input array to the GPU
   checkCudaErrors(cudaMemcpy(*d_rgbaImage, *inputImage, sizeof(uchar4) * numPixels, cudaMemcpyHostToDevice));

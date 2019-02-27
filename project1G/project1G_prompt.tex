@@ -1,0 +1,108 @@
+\documentclass[12pt,letter]{article}
+\usepackage{geometry}\geometry{top=0.75in}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{xcolor}	% Color words
+\usepackage{cancel}	% Crossing parts of equations out
+\usepackage{tikz}    	% Drawing 
+\usepackage{listings}   % For making code snippets
+\usepackage{hyperref}   % Links
+
+% Don't indent
+\setlength{\parindent}{0pt}
+% Function to replace \section with a problem name specifically formatted
+\newcommand{\problem}[1]{\vspace{3mm}\Large\textbf{{Problem {#1}\vspace{3mm}}}\normalsize\\}
+% Formatting function, like \problem
+\newcommand{\ppart}[1]{\vspace{2mm}\large\textbf{\\Part {#1})\vspace{2mm}}\normalsize\\}
+% Formatting 
+\newcommand{\condition}[1]{\vspace{1mm}\textbf{{#1}:}\normalsize\\}
+
+\lstset{frame=tb,
+        language=bash,
+        aboveskip=3mm,
+        belowskip=3mm,
+        showstringspaces=true,
+        columns=flexible,
+        basicstyle={\small\ttfamily},
+        numbers=none,
+        keywordstyle=\color{blue},
+        stringstyle=\color{green},
+        breaklines=true,
+        breakatwhitespace=true,
+        tabsize=3
+}
+\hypersetup{colorlinks=true,
+            linkcolor=blue,
+            filecolor=magenta,
+            urlcolor=cyan
+}
+
+\begin{document}
+\title{CIS 441/551: Project \#1G\\
+       \large Gray Scale Shading with CUDA}
+\date{}
+\maketitle
+
+\large{\textbf{Instructions:}}
+You will be converting an image to grey scale using CUDA 10.
+\begin{enumerate}
+    \item You can use the skeleton code provided to you, called project1G.cu
+    \item You will be responsible for handling all memory allocations to and 
+          from the device. Don't forget to free memory!
+    \item You will also be responsible for writing the grey scale shader. You
+          must use the correct luminosity equation (see below)
+    \item Comments are provided to you in the code to help you out. Read over
+          them before you begin typing. You can change any code you wish, as
+          long as your image is the same, \textbf{BUT} you only need to add
+          code and the comments will tell you where to place certain things,
+          ensuring that you have the correct order of operations (this is
+          very important).
+    \item You should not expect a pixel perfect image. Expect the reference
+          image to match by eye. 
+\end{enumerate}
+
+\large{\textbf{Hints:}}
+\textbf{Where to start?} There is a lot of documentation around for cuda. I 
+would suggest searching the internet and find a source that makes sense to you
+(sometimes it just takes another source). Some helpful links are 
+\href{https://www.nvidia.com/docs/IO/116711/sc11-cuda-c-basics.pdf}{Nvidia's
+documentation} and 
+\href{http://supercomputingblog.com/cuda/cuda-tutorial-1-getting-started/}
+{The Supercomputing Blog}. Both these resources contain all the information
+needed to complete the task. 
+
+
+\textbf{Luminosity}: The human eye does not see all colors with the same 
+magnitude. The center of our color vision is near yellow-green, and colors
+closer to that will appear brighter. Thus we can't just average the RGB colors
+and get an accurate looking image (try it). The correct formula to use is
+\begin{equation}
+    L = 0.21 * Red + 0.72 * Green + 0.07 * Blue
+\end{equation}
+You can see here that we have higher preferences to green and the lowest 
+preference to blue, just like in the natural world. 
+
+
+\textbf{Compiling}: Compile with the command
+\begin{lstlisting}
+nvcc -o project1G{,.cu} `pkg-config --cflags --libs opencv`
+\end{lstlisting}
+This command will work on Ubuntu systems. If you are using another system then
+you will need to add the same cflags and libs that opencv requires. 
+Note that we are using the back-tick, `, which is (probably) located at the top
+left of your keyboard, left of the 1 key.
+
+
+\textbf{Getting a GPU}: If you don't have access to a GPU please email
+swalton2@uoregon.edu with the title "Alaska Access: 441" and an account will
+be created for you and instructions will be provided on how to access the GPU.
+
+
+\textbf{Checking with CPU}: If you decide to check your result with a CPU you
+will not get a pixel perfect representation. It is normally a good idea to check
+results like this, but your images will have differences unless you take into
+account FMA instructions (on the GPU). More documentation can be found in
+the \href{https://docs.nvidia.com/cuda/floating-point/index.html#axzz42SnDmIrm}{cuda documentation}. You can also email Steven if you need to edit your code to 
+perform this check. 
+\end{document}
