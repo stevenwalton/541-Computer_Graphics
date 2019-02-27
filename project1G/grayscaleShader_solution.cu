@@ -12,6 +12,16 @@
 #include <cmath>
 
 #define checkCudaErrors(val) check( (val), #val, __FILE__, __LINE__)
+// Globals
+cv::Mat imageRGBA;
+cv::Mat imageGrey;
+
+uchar4        *d_rgbaImage__;
+unsigned char *d_greyImage__;
+
+size_t numRows() { return imageRGBA.rows; }
+size_t numCols() { return imageRGBA.cols; }
+static const size_t numPixels = numRows() * numCols();
 
 template<typename T>
 void check(T err, const char* const func, const char* const file, const int line) {
@@ -37,10 +47,10 @@ void rgba_to_greyscale(const uchar4* const rgbaImage,
     if(index > (numCols*numRows)) return;
     uchar4 rgba = rgbaImage[index];
 
-    unsigned char I = 0.299f*rgba.x + 0.587f*rgba.y + 0.114f*rgba.z;
-    //unsigned char I = __fadd_rn(__fadd_rn(__fmul_rn(0.299f, rgba.x),
-    //                  __fmul_rn(0.587f, rgba.y)),
-    //                  __fmul_rn(0.114f, rgba.z));
+    //unsigned char I = 0.299f*rgba.x + 0.587f*rgba.y + 0.114f*rgba.z;
+    unsigned char I = __fadd_rn(__fadd_rn(__fmul_rn(0.299f, rgba.x),
+                      __fmul_rn(0.587f, rgba.y)),
+                      __fmul_rn(0.114f, rgba.z));
     //greyImage[index] = I;
     greyImage[index] = static_cast<unsigned char>(I);
 }
@@ -62,16 +72,18 @@ your_rgba_to_greyscale(const uchar4 * const h_rgbaImage,
 /****************************************************/
 
 
-cv::Mat imageRGBA;
-cv::Mat imageGrey;
+void
+allocateMemory()
+{
+    d_rgbaImage__ = *d_rgbaImage;
+    d_greyImage__ = *d_greyImage;
+  checkCudaErrors(cudaMalloc(d_rgbaImage, sizeof(uchar4) * numPixels));
+  checkCudaErrors(cudaMalloc(d_greyImage, sizeof(unsigned char) * numPixels));
+  checkCudaErrors(cudaMemset(*d_greyImage, 0, numPixels * sizeof(unsigned char))); //make sure no memory is left laying around
+}
 
-uchar4        *d_rgbaImage__;
-unsigned char *d_greyImage__;
-
-size_t numRows() { return imageRGBA.rows; }
-size_t numCols() { return imageRGBA.cols; }
-
-void preProcess(uchar4 **inputImage, unsigned char **greyImage,
+void 
+preProcess(uchar4 **inputImage, unsigned char **greyImage,
                 uchar4 **d_rgbaImage, unsigned char **d_greyImage,
                 const std::string &filename) {
   //make sure the context initializes ok
@@ -86,6 +98,7 @@ void preProcess(uchar4 **inputImage, unsigned char **greyImage,
 
   cv::cvtColor(image, imageRGBA, CV_BGR2RGBA);
 
+
   //allocate memory for the output
   imageGrey.create(image.rows, image.cols, CV_8UC1);
 
@@ -99,17 +112,17 @@ void preProcess(uchar4 **inputImage, unsigned char **greyImage,
   *inputImage = (uchar4 *)imageRGBA.ptr<unsigned char>(0);
   *greyImage  = imageGrey.ptr<unsigned char>(0);
 
-  const size_t numPixels = numRows() * numCols();
+  //const size_t numPixels = numRows() * numCols();
   //allocate memory on the device for both input and output
-  checkCudaErrors(cudaMalloc(d_rgbaImage, sizeof(uchar4) * numPixels));
-  checkCudaErrors(cudaMalloc(d_greyImage, sizeof(unsigned char) * numPixels));
-  checkCudaErrors(cudaMemset(*d_greyImage, 0, numPixels * sizeof(unsigned char))); //make sure no memory is left laying around
+  //checkCudaErrors(cudaMalloc(d_rgbaImage, sizeof(uchar4) * numPixels));
+  //checkCudaErrors(cudaMalloc(d_greyImage, sizeof(unsigned char) * numPixels));
+  //checkCudaErrors(cudaMemset(*d_greyImage, 0, numPixels * sizeof(unsigned char))); //make sure no memory is left laying around
 
   //copy input array to the GPU
   checkCudaErrors(cudaMemcpy(*d_rgbaImage, *inputImage, sizeof(uchar4) * numPixels, cudaMemcpyHostToDevice));
 
-  d_rgbaImage__ = *d_rgbaImage;
-  d_greyImage__ = *d_greyImage;
+  //d_rgbaImage__ = *d_rgbaImage;
+  //d_greyImage__ = *d_greyImage;
 }
 
 void postProcess(const std::string& output_file, unsigned char* data_ptr) {
