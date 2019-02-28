@@ -40,7 +40,7 @@
 
 \begin{document}
 \title{CIS 441/551: Project \#1G\\
-       \large Gray Scale Shading with CUDA}
+       \large Gray Scale Shading with CUDA and Sobel Filtering}
 \date{}
 \maketitle
 
@@ -58,9 +58,18 @@ You will be converting an image to grey scale using CUDA 10.
           code and the comments will tell you where to place certain things,
           ensuring that you have the correct order of operations (this is
           very important).
+    \item After you have successfully created the greyscale image you will
+          want to start working on the Sobel Operator. The x and y kernels
+          that you should use are already provided to you. You will implement
+          the correct math operation using the correct indexes. You will have 
+          to do a double for loop to get this working. The rest is provided for
+          you. Figuring out the right indexing is key here.
     \item You should not expect a pixel perfect image. Expect the reference
-          image to match by eye. 
+          images to match by eye. 
 \end{enumerate}
+
+You will turn in a tarball with your code. Your code should generate two images:
+a greyscale image and a Sobel image.
 
 \large{\textbf{Hints:}}
 \textbf{Where to start?} There is a lot of documentation around for cuda. I 
@@ -82,6 +91,11 @@ and get an accurate looking image (try it). The correct formula to use is
 \end{equation}
 You can see here that we have higher preferences to green and the lowest 
 preference to blue, just like in the natural world. 
+
+
+\textbf{Sobel Operator}: The \href{https://en.wikipedia.org/wiki/Sobel_operator}
+{Sobel Operator} is frequently used in image detection because it highlights
+edges. Usually you will want to greyscale your image first.
 
 
 \textbf{Compiling}: Compile with the command
