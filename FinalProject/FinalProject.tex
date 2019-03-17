@@ -1,0 +1,262 @@
+\documentclass[pdf,8pt]{beamer}
+
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}       % Images
+\usepackage{xcolor}         % Change Colors
+%\usepackage[font={scriptsize}]{caption}   % Adjust caption fonts
+\usepackage{caption}
+\captionsetup[figure]{font=small}
+%\usetheme{Madrid}
+\usepackage{multimedia}     % Movies!
+
+% Title
+\title{Visualizing High Performance Computing Data\\
+    \large{Earthquake Simulation of Hayward Fault: SW4}\\
+        \tiny{(In 3 minutes or less)}}
+\author{Steven Walton\\
+        \small University of Oregon}
+\date{CIS 541: Computer Graphics Final \\18 March 2019}
+
+% Background
+\usebackgroundtemplate
+{
+    \includegraphics[width=\paperwidth,height=\paperheight]{UOTemplate.png}
+}
+
+\definecolor{UOYellow}{HTML}{FDCB00}
+
+% Formatting
+\setbeamercolor{title}{fg=white}
+\setbeamercolor{normal text}{fg=white}
+%\setbeamercolor{frametitle}{fg=white}
+\setbeamercolor{structure}{fg=white}        % Adjusts figures and frame titles
+%\setbeamercolor{palette primary}{fg=white}
+%\setbeamercolor{palette secondary}{fg=white}
+%\setbeamercolor{section in toc}{fg=white}
+%\setbeamercolor{subsection in head/foot}{fg=white}
+
+
+%\newcommand{\mytitle}[1]{\setcolor{bg=UOYellow,fg=green}\frametitle{{#1}}}
+\newcommand\Quadrents[4]{
+    \begin{minipage}[b][0.35\textheight][t]{0.49\textwidth}#1\end{minipage}\hfill
+    \begin{minipage}[b][0.35\textheight][t]{0.49\textwidth}#2\end{minipage}\\[0.5em]
+    \begin{minipage}[b][0.35\textheight][t]{0.49\textwidth}#3\end{minipage}\hfill
+    \begin{minipage}[b][0.35\textheight][t]{0.49\textwidth}#4\end{minipage}
+}
+
+\newcommand\Split[2]{
+    \begin{minipage}[b][0.35\textheight][t]{0.8\textwidth}#1\end{minipage}\\[2.0em]
+    \begin{minipage}[b][0.35\textheight][t]{0.8\textwidth}#2\end{minipage}
+}
+
+\begin{document}
+
+% 1
+\frame{\titlepage}
+
+% 2
+\begin{frame}
+\frametitle{What are we modeling?}
+
+\begin{columns}
+    % Left
+    \begin{column}{0.49\paperwidth}
+    \begin{itemize}
+    \item Lawrence Livermore (LLNL) and Lawrence Berkeley (LBNL) National Labs are working
+          on earthquake modeling within the Bay area. 
+    \item United States Geologic Survey (USGS) predicts a 1 in 3 chance of a rupture
+          with $\geq$ 6.7 magnitude in the next 30 years.
+    \item LLNL and LBNL have created new earthquake modeling sims that are 4-8x
+          more resolved than previous models.
+    \item Scientists typically look at only 2D slices of data
+    \item<2> Read more at: https://www.llnl.gov/news/hayward-fault-earthquake-simulations-increase-fidelity-ground-motions
+    \end{itemize}
+    \end{column}
+
+    % Right
+    \begin{column}{0.49\paperwidth}
+    \begin{figure}[ht]
+        \vspace{-4em}
+        \begin{center}
+            \includegraphics[width=\textwidth]{hayward_fault.png}
+            \caption{Hayward Fault Line (source: Berkeley Seismology Lab)}
+        \end{center}
+    \end{figure}
+    \end{column}
+\end{columns}
+\end{frame}
+
+% 3
+\begin{frame}
+\frametitle{In Situ}
+\begin{columns}
+    % Left
+    \begin{column}{0.69\paperwidth}
+    \begin{itemize}
+        \item So much data is being generated at once that it is impossible to save
+              all of it and do analysis Post Hoc (after the fact)
+        \item We need to analyze data as it is being generated, we call this
+              In Situ.
+        \item Still need to compress data so we can visualize it fast enough.
+        \item We can use Visit or Ascent
+        \item Visit is great for post hoc methods
+        \item Ascent is built for in situ methods and with a small modification of
+              code we can enable in situ techniques.
+    \end{itemize}
+    \end{column}
+% Right
+    \begin{column}{0.3\paperwidth}
+    %\vspace{-3em}
+    \begin{figure}[ht]
+        \includegraphics[width=\textwidth]{aftershock.png}
+    \caption{Aftershocks of M=7.1 Earthquake (source: Temblor)}
+    \end{figure}
+    \end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}
+\begin{columns}
+    \begin{column}{0.34\paperwidth}
+        \begin{itemize}
+            \item<1-> Let's open up Visit and plot a single time step
+            \item<2-> Let's try to apply some operators
+            \item<4-> ... Memory is full
+            \item<5-> ... Computer crashed
+            \item<6-> ...
+            \item<7-> ... Let's go to Alaska
+        \end{itemize}
+    \end{column}
+
+    \begin{column}{0.65\paperwidth}
+        \begin{figure}
+            \begin{center}
+                \includegraphics<1-2>[height=0.6\textwidth]{Screenshot2.png}
+                \includegraphics<3-5>[height=0.6\textwidth]{Screenshot2_crash.png}
+                \includegraphics<6->[height=0.6\textwidth]{crash.png}
+                \caption{Visit Setup}
+            \end{center}
+        \end{figure}
+    \end{column}
+\end{columns}
+\end{frame}
+
+%4
+\begin{frame}
+\frametitle{So what's it look like?}
+\begin{columns}
+% Left
+\begin{column}{0.29\paperwidth}
+\begin{itemize}
+    \item Lots of low frequency data underneath the surface
+    \item Lots of high frequency data on the surface
+    \item Can we try to reduce the data size and focus on the important stuff?
+\end{itemize}
+\end{column}
+% Right
+\begin{column}{0.70\paperwidth}
+\begin{figure}[h!]
+\begin{center}
+    \movie[autostart,showcontrols,loop]{\includegraphics[height=0.70\textheight]{earthquake.png}}{earthquake.mp4}
+    \caption{Raw data plotted}
+\end{center}
+\end{figure}
+%\vspace{-2em}
+%\Split
+%{
+%    \vspace{-3em}
+%    \begin{figure}[h!]
+%    \begin{center}
+%        %\movie[autostart,showcontrols,loop]{\includegraphics[height=0.75\textheight]{earthquake.png}}{earthquake.mp4}
+%        \movie[autostart,showcontrols,loop]{\includegraphics[height=0.35\textheight]{earthquake.png}}{earthquake.mp4}
+%        %\movie[autostart,showcontrols,loop]{\includegraphics[height=0.35\textheight]{earthquake_rotate.png}}{earthquake_rotate2.mp4}
+%        \caption{Raw data plotted}
+%    \end{center}
+%    \end{figure}
+%}
+%{
+%    \vspace{-2em}
+%    \begin{figure}[h!]
+%    \begin{center}
+%        %\movie[autostart,showcontrols,loop]{\includegraphics[height=0.75\textheight]{earthquake.png}}{earthquake.mp4}
+%        \movie[autostart,showcontrols,loop]{\includegraphics[height=0.35\textheight]{earthquake_rotate.png}}{earthquake_rotate2.mp4}
+%        \caption{Raw data plotted}
+%    \end{center}
+%    \end{figure}
+%}
+\end{column} % Right
+\end{columns}
+\end{frame}
+
+%   \begin{frame}
+%   \frametitle{Let's investigate}
+%   \begin{columns}
+%   \begin{column}{0.49\paperwidth}
+%   \begin{figure}[h!]
+%   \begin{center}
+%   \includegraphics[height=0.40\textheight]{Screenshot.png}
+%   \end{center}
+%   \end{figure}
+%   \end{column}
+
+%   \begin{column}{0.49\paperwidth}
+%   \begin{figure}[h!]
+%   \begin{center}
+%       %\movie[autostart,showcontrols,loop]{\includegraphics[height=0.75\textheight]{earthquake.png}}{earthquake.mp4}
+%       \movie[autostart,showcontrols,loop]{\includegraphics[height=0.59\textheight]{earthquake_rotate.png}}{earthquake_rotate2.mp4}
+%       \caption{Rotating figure at timestep 15}
+%   \end{center}
+%   \end{figure}
+%   \end{column}
+%   \end{columns}
+%   \end{frame}
+
+%5 
+\begin{frame}
+\frametitle{0.01 Threshold}
+\begin{figure}[h!]
+    \movie[autostart,showcontrols,loop]{\includegraphics[height=0.75\textheight]{earthquake_0p01thresh.png}}{earthquake_0p01thresh.mp4}
+    \caption{0.01 Threshold Applied}
+\end{figure}
+\end{frame}
+%6
+\begin{frame}
+\frametitle{0.02 Threshold}
+\begin{figure}[h!]
+    \movie[autostart,showcontrols,loop]{\includegraphics[height=0.75\textheight]{earthquake_0p02thresh.png}}{earthquake_0p02thresh.mp4}
+    \caption{0.02 Threshold Applied}
+\end{figure}
+\end{frame}
+
+%7
+\begin{frame}
+\frametitle{What about Ray Tracing the image?}
+\vspace{-1.4em}
+\begin{figure}[h!]
+    \movie[autostart,showcontrols,loop]{\includegraphics[height=0.79\textheight]{earthquake.png}}{earthquake_max2_highres_0p02thresh.mp4}
+    \caption{0.02 Threshold Ray Tracing}
+\end{figure}
+\end{frame}
+%8
+\begin{frame}
+\frametitle{More rays equals more better?}
+\vspace{-1.4em}
+\begin{figure}[h!]
+    \movie[autostart,showcontrols,loop]{\includegraphics[height=0.79\textheight]{earthquake.png}}{highres_raycasting.mp4}
+    \caption{0.02 Threshold High Resolution Ray Tracing}
+\end{figure}
+\end{frame}
+
+\begin{frame}
+\frametitle{Where to next}
+    \begin{itemize}
+        \item We need to get this running in Ascent now.
+        \item Provide an in situ method for performing the same features.
+        \item Requires restructuring the data so that we can use VTK-h filters.
+        \item We need to extend features in both VTK-m and VTK-h.
+        \item Make pretty pictures.
+        \item Deliver product to scientists and make them happy.
+    \end{itemize}
+\end{frame}
+% End
+\end{document}
